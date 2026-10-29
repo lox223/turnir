@@ -36,6 +36,13 @@
   #send { width: 100%; padding: 14px; border: 0; border-radius: 12px; background: var(--accent);
           color: var(--accent-text); font-size: 16px; font-weight: 600; }
   .note { color: var(--hint); font-size: 13px; text-align: center; margin-top: 12px; }
+  .counter { background: var(--card); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+  .counter-top { display: flex; justify-content: space-between; align-items: baseline; }
+  .counter-num { font-size: 28px; font-weight: 700; }
+  .counter-num span { font-size: 16px; color: var(--hint); font-weight: 400; }
+  .bar { height: 10px; border-radius: 999px; background: var(--bg); overflow: hidden; margin: 10px 0 8px; }
+  .bar div { height: 100%; width: 0; background: var(--accent); border-radius: 999px; transition: width .6s; }
+  .counter-hint { color: var(--hint); font-size: 13px; }
   .conditions { border: 1px solid var(--accent); }
   .conditions ol { margin: 0 0 12px; padding-left: 20px; font-size: 14px; clear: both; }
   .conditions li { margin-bottom: 6px; }
@@ -50,9 +57,18 @@
   <h1>🏟 Турнир CS2 · 2x2</h1>
   <div class="sub">Регистрация команды. Капитан — тот, кто отправляет заявку.</div>
   <div class="badges">
-    <span class="badge">👥 2 команды · 4 игрока</span>
     <span class="badge">⚔️ Wingman 2x2</span>
-    <span class="badge">🏆 Один матч — финал</span>
+    <span class="badge">🏆 Финал: 2 команды · 4 игрока</span>
+  </div>
+
+  <!-- Filled from ?count=&goal= that the bot puts into the button's address. -->
+  <div class="counter hidden" id="counter">
+    <div class="counter-top">
+      <div>Заявок подано</div>
+      <div class="counter-num" id="count">0 <span>из 0</span></div>
+    </div>
+    <div class="bar"><div id="bar"></div></div>
+    <div class="counter-hint" id="counter-hint"></div>
   </div>
 
   <fieldset class="conditions">
@@ -108,7 +124,19 @@
   const tg = window.Telegram && window.Telegram.WebApp;
   const inTelegram = Boolean(tg && tg.initData);
   const $ = (id) => document.getElementById(id);
-  const BOT = new URLSearchParams(location.search).get("bot") || "YooStonkBot";
+  const params = new URLSearchParams(location.search);
+  const BOT = params.get("bot") || "YooStonkBot";
+
+  const count = parseInt(params.get("count"), 10);
+  const goal = parseInt(params.get("goal"), 10);
+  if (count >= 0 && goal > 0) {
+    $("counter").classList.remove("hidden");
+    $("count").innerHTML = `${count} <span>из ${goal}</span>`;
+    requestAnimationFrame(() => { $("bar").style.width = Math.min(100, count / goal * 100) + "%"; });
+    $("counter-hint").textContent = count >= goal
+      ? "🎯 Цель набрана! Скоро админ выберет 2 команды в финал — ещё успеваешь подать заявку."
+      : `Осталось ${goal - count}. Когда наберём ${goal} заявок, админ выберет 2 команды в финал.`;
+  }
 
   // Same referral link as the bot's «Пригласить друга»: t.me/<bot>?start=r<user id>.
   $("invite").addEventListener("click", () => {
