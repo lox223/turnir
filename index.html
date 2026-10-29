@@ -36,6 +36,16 @@
   #send { width: 100%; padding: 14px; border: 0; border-radius: 12px; background: var(--accent);
           color: var(--accent-text); font-size: 16px; font-weight: 600; }
   .note { color: var(--hint); font-size: 13px; text-align: center; margin-top: 12px; }
+  .prize { position: relative; overflow: hidden; border-radius: 14px; margin-bottom: 12px;
+           background: radial-gradient(ellipse at 60% 40%, #4a1f24 0%, #1b2129 70%); }
+  .prize img { display: block; width: 100%; height: auto; }
+  .prize-info { padding: 0 14px 14px; }
+  .prize-label { color: var(--hint); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+  .prize-name { font-size: 20px; font-weight: 700; color: #a66bff; margin: 2px 0; }
+  .prize-rarity { font-size: 13px; color: #eb4b4b; }
+  .prize-both { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: rgba(0, 0, 0, .25);
+                font-size: 14px; color: #f5f5f5; }
+  .prize-both b { color: var(--accent); }
   .counter { background: var(--card); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
   .counter-top { display: flex; justify-content: space-between; align-items: baseline; }
   .counter-num { font-size: 28px; font-weight: 700; }
@@ -59,6 +69,16 @@
   <div class="badges">
     <span class="badge">⚔️ Wingman 2x2</span>
     <span class="badge">🏆 Финал: 2 команды · 4 игрока</span>
+  </div>
+
+  <div class="prize">
+    <img src="prize.png" alt="AWP | Экзотермия" width="440" height="270">
+    <div class="prize-info">
+      <div class="prize-label">🏆 Приз турнира</div>
+      <div class="prize-name">AWP | Экзотермия</div>
+      <div class="prize-rarity">Снайперская винтовка · Запрещённое</div>
+      <div class="prize-both">🤝 Получат <b>оба победителя</b> — каждому игроку команды-победителя по скину.</div>
+    </div>
   </div>
 
   <!-- Filled from ?count=&goal= that the bot puts into the button's address. -->
