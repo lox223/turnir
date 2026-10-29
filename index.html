@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Турнир 2x2 · YooSkins</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --bg: var(--tg-theme-bg-color, #17212b);
+    --card: var(--tg-theme-secondary-bg-color, #232e3c);
+    --text: var(--tg-theme-text-color, #f5f5f5);
+    --hint: var(--tg-theme-hint-color, #8b9aab);
+    --accent: var(--tg-theme-button-color, #f5a623);
+    --accent-text: var(--tg-theme-button-text-color, #111);
+    --error: #ff5c5c;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 16px/1.4 -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 480px; margin: 0 auto; padding: 16px 16px 96px; }
+  h1 { font-size: 22px; margin: 4px 0 2px; }
+  .sub { color: var(--hint); font-size: 14px; margin-bottom: 16px; }
+  .badges { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .badge { background: var(--card); border-radius: 999px; padding: 4px 12px; font-size: 13px; }
+  fieldset { border: 0; margin: 0 0 12px; padding: 14px; background: var(--card); border-radius: 14px; }
+  legend { float: left; width: 100%; padding: 0; margin-bottom: 10px; font-weight: 600; }
+  label { display: block; font-size: 13px; color: var(--hint); margin: 10px 0 4px; clear: both; }
+  input[type=text] { width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid transparent;
+                     background: var(--bg); color: var(--text); font-size: 16px; outline: none; }
+  input[type=text]:focus { border-color: var(--accent); }
+  input.bad { border-color: var(--error); }
+  .err { color: var(--error); font-size: 13px; min-height: 0; margin-top: 4px; }
+  .rules { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: var(--text); margin: 0; }
+  .rules input { margin-top: 3px; width: 18px; height: 18px; accent-color: var(--accent); }
+  #send { width: 100%; padding: 14px; border: 0; border-radius: 12px; background: var(--accent);
+          color: var(--accent-text); font-size: 16px; font-weight: 600; }
+  .note { color: var(--hint); font-size: 13px; text-align: center; margin-top: 12px; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>🏟 Турнир CS2 · 2x2</h1>
+  <div class="sub">Регистрация команды. Капитан — тот, кто отправляет заявку.</div>
+  <div class="badges">
+    <span class="badge">👥 2 команды · 4 игрока</span>
+    <span class="badge">⚔️ Wingman 2x2</span>
+    <span class="badge">🏆 Один матч — финал</span>
+  </div>
+
+  <form id="form" novalidate>
+    <fieldset>
+      <legend>Команда</legend>
+      <label for="team">Название команды</label>
+      <input type="text" id="team" maxlength="20" placeholder="Например, Silver Kings" autocomplete="off">
+      <div class="err" id="team-err"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>👑 Капитан (ты)</legend>
+      <label for="nick">Ник в Steam / FACEIT</label>
+      <input type="text" id="nick" maxlength="24" placeholder="Твой игровой ник" autocomplete="off">
+      <div class="err" id="nick-err"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>🤝 Напарник</legend>
+      <label for="mate">@username в Telegram</label>
+      <input type="text" id="mate" maxlength="33" placeholder="@nickname" autocomplete="off" autocapitalize="off">
+      <div class="err" id="mate-err"></div>
+      <label for="mate_nick">Ник в Steam / FACEIT</label>
+      <input type="text" id="mate_nick" maxlength="24" placeholder="Игровой ник напарника" autocomplete="off">
+      <div class="err" id="mate_nick-err"></div>
+    </fieldset>
+
+    <fieldset>
+      <label class="rules"><input type="checkbox" id="rules">
+        <span>Мы подписаны на канал и придём на матч вовремя. Неявка — техническое поражение.</span></label>
+      <div class="err" id="rules-err"></div>
+    </fieldset>
+
+    <!-- Outside Telegram there is no MainButton, so this button is the fallback. -->
+    <button type="submit" id="send" class="hidden">Зарегистрировать команду</button>
+  </form>
+  <div class="note" id="note"></div>
+</main>
+
+<script>
+  const tg = window.Telegram && window.Telegram.WebApp;
+  const inTelegram = Boolean(tg && tg.initData);
+  const $ = (id) => document.getElementById(id);
+
+  function setError(id, text) {
+    $(id + "-err").textContent = text || "";
+    const input = $(id);
+    if (input.type === "text") input.classList.toggle("bad", Boolean(text));
+  }
+
+  function collect() {
+    const data = {
+      team: $("team").value.trim(),
+      nick: $("nick").value.trim(),
+      mate: $("mate").value.trim().replace(/^@/, ""),
+      mate_nick: $("mate_nick").value.trim(),
+    };
+    const errors = {
+      team: data.team.length < 2 ? "От 2 до 20 символов" : "",
+      nick: data.nick.length < 2 ? "От 2 до 24 символов" : "",
+      mate: /^[A-Za-z0-9_]{5,32}$/.test(data.mate) ? "" : "Нужен @username напарника, например @silver_king",
+      mate_nick: data.mate_nick.length < 2 ? "От 2 до 24 символов" : "",
+      rules: $("rules").checked ? "" : "Поставь галочку",
+    };
+    Object.entries(errors).forEach(([id, text]) => setError(id, text));
+    return Object.values(errors).some(Boolean) ? null : data;
+  }
+
+  function submit() {
+    const data = collect();
+    if (!data) {
+      if (inTelegram) tg.HapticFeedback.notificationOccurred("error");
+      return;
+    }
+    if (inTelegram) {
+      // The bot receives this as a web_app_data message; Telegram closes the app after it.
+      tg.sendData(JSON.stringify(data));
+    } else {
+      $("note").textContent = "Предпросмотр: заявка уходит боту, только если открыть страницу из бота в Telegram.";
+    }
+  }
+
+  $("form").addEventListener("submit", (e) => { e.preventDefault(); submit(); });
+  ["team", "nick", "mate", "mate_nick"].forEach((id) =>
+    $(id).addEventListener("input", () => setError(id, "")));
+  $("rules").addEventListener("change", () => setError("rules", ""));
+
+  if (inTelegram) {
+    tg.ready();
+    tg.expand();
+    tg.MainButton.setText("Зарегистрировать команду");
+    tg.MainButton.onClick(submit);
+    tg.MainButton.show();
+  } else {
+    $("send").classList.remove("hidden");
+  }
+</script>
+</body>
+</html>
