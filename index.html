@@ -36,6 +36,12 @@
   #send { width: 100%; padding: 14px; border: 0; border-radius: 12px; background: var(--accent);
           color: var(--accent-text); font-size: 16px; font-weight: 600; }
   .note { color: var(--hint); font-size: 13px; text-align: center; margin-top: 12px; }
+  .conditions { border: 1px solid var(--accent); }
+  .conditions ol { margin: 0 0 12px; padding-left: 20px; font-size: 14px; clear: both; }
+  .conditions li { margin-bottom: 6px; }
+  .conditions b { color: var(--accent); }
+  #invite { width: 100%; padding: 12px; border: 1px solid var(--accent); border-radius: 10px;
+            background: transparent; color: var(--accent); font-size: 15px; font-weight: 600; }
   .hidden { display: none; }
 </style>
 </head>
@@ -48,6 +54,17 @@
     <span class="badge">⚔️ Wingman 2x2</span>
     <span class="badge">🏆 Один матч — финал</span>
   </div>
+
+  <fieldset class="conditions">
+    <legend>📋 Условия участия</legend>
+    <ol>
+      <li>Приведи в канал <b>1 друга</b>: он переходит по твоей ссылке, подписывается на канал
+        и участвует в боте. <b>Без друга регистрация невозможна.</b></li>
+      <li><b>Оба игрока</b> подписаны на канал.</li>
+      <li>Напарник хотя бы раз открыл бота и нажал /start.</li>
+    </ol>
+    <button type="button" id="invite">👥 Пригласить друга</button>
+  </fieldset>
 
   <form id="form" novalidate>
     <fieldset>
@@ -76,7 +93,8 @@
 
     <fieldset>
       <label class="rules"><input type="checkbox" id="rules">
-        <span>Мы подписаны на канал и придём на матч вовремя. Неявка — техническое поражение.</span></label>
+        <span>Мы оба подписаны на канал, я привёл друга, и мы придём на матч вовремя.
+          Неявка — техническое поражение.</span></label>
       <div class="err" id="rules-err"></div>
     </fieldset>
 
@@ -90,6 +108,19 @@
   const tg = window.Telegram && window.Telegram.WebApp;
   const inTelegram = Boolean(tg && tg.initData);
   const $ = (id) => document.getElementById(id);
+  const BOT = new URLSearchParams(location.search).get("bot") || "YooStonkBot";
+
+  // Same referral link as the bot's «Пригласить друга»: t.me/<bot>?start=r<user id>.
+  $("invite").addEventListener("click", () => {
+    const user = inTelegram && tg.initDataUnsafe.user;
+    if (!user) {
+      $("note").textContent = "Ссылка для друга появится, если открыть страницу из бота в Telegram.";
+      return;
+    }
+    const link = `https://t.me/${BOT}?start=r${user.id}`;
+    const text = "🔥 Бесплатные розыгрыши скинов CS2 + ежедневный кейс. Заходи!";
+    tg.openTelegramLink("https://t.me/share/url?" + new URLSearchParams({ url: link, text }));
+  });
 
   function setError(id, text) {
     $(id + "-err").textContent = text || "";
