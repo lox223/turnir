@@ -74,8 +74,26 @@
   .item-chance { position: absolute; top: 8px; left: 8px; background: rgba(0, 0, 0, .45); color: #fff;
                  border-radius: 6px; padding: 1px 7px; font-size: 12px; font-weight: 600; }
   .item.top { box-shadow: 0 0 0 1px #e4ae39 inset; }
-  #spin { width: 100%; padding: 14px; border: 0; border-radius: 12px; background: var(--accent);
-          color: var(--accent-text); font-size: 16px; font-weight: 600; margin-top: 4px; }
+  #spin { width: 100%; padding: 16px; border: 0; border-radius: 12px; background: var(--accent);
+          color: var(--accent-text); font-size: 17px; font-weight: 700; margin: 0 0 6px; }
+  #spin:disabled { opacity: .6; }
+  /* The roulette: a strip of cards that slides under the yellow line and stops on the prize. */
+  .roll { position: relative; overflow: hidden; border-radius: 14px; background: #24222e; padding: 10px 0;
+          margin-bottom: 12px; }
+  .roll::before, .roll::after { content: ""; position: absolute; top: 0; bottom: 0; width: 40px; z-index: 2; }
+  .roll::before { left: 0; background: linear-gradient(90deg, #24222e, transparent); }
+  .roll::after { right: 0; background: linear-gradient(-90deg, #24222e, transparent); }
+  .roll-track { display: flex; gap: 8px; will-change: transform; }
+  .roll .item { flex: 0 0 110px; padding: 0 6px 6px; border-radius: 10px; }
+  .roll .item-price { font-size: 14px; }
+  .roll .item-wear { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .roll .item.win { box-shadow: 0 0 0 2px #e4ae39 inset, 0 0 16px rgba(228, 174, 57, .6); }
+  .roll-marker { position: absolute; top: 0; bottom: 0; left: 50%; width: 3px; margin-left: -1.5px; z-index: 3;
+                 background: #e4ae39; box-shadow: 0 0 10px #e4ae39; }
+  .result { text-align: center; background: var(--card); border-radius: 14px; padding: 14px; margin-bottom: 12px;
+            font-size: 15px; }
+  .result b { color: var(--accent); font-size: 18px; }
+  h2 { font-size: 17px; margin: 16px 0 10px; }
 </style>
 </head>
 <body>
@@ -88,6 +106,11 @@
   <section id="tab-case" class="hidden">
     <h1>💎 Бесплатный кейс</h1>
     <div class="sub">Раз в сутки и бесплатно. Внутри — настоящие скины CS2.</div>
+    <div class="roll" id="roll"><div class="roll-marker"></div><div class="roll-track" id="track"></div></div>
+    <div class="result hidden" id="result"></div>
+    <button type="button" id="spin">🎰 Крутить бесплатно</button>
+    <div class="note" id="spin-note">Нажми — бот откроет кейс и пришлёт кнопку «🎰 Смотреть прокрутку».</div>
+    <h2>🎁 Что внутри</h2>
     <div class="items" id="items"></div>
     <fieldset class="conditions">
       <legend>📋 Правила</legend>
@@ -100,9 +123,6 @@
           <b>@YooAksel</b> — денег за вывод никто никогда не просит.</li>
       </ol>
     </fieldset>
-    <!-- Outside Telegram there is no MainButton, so this button is the fallback. -->
-    <button type="button" id="spin" class="hidden">🎰 Крутить бесплатно</button>
-    <div class="note">Результат придёт в чат с ботом.</div>
   </section>
 
   <section id="tab-tourney">
@@ -267,34 +287,81 @@
             font-family="-apple-system, Segoe UI, Roboto, sans-serif">+3</text>
       <text x="117" y="63" text-anchor="middle" font-size="16">🎟</text>
     </g></svg>`;
+  // Codes match bot.FREE_CASE; the bot sends #roll=<code> to replay what it decided.
   const ITEMS = [
-    { img: null, wear: "Утешительный приз", price: "+3 билета в розыгрыше", chance: 65, rarity: "#8b9aab" },
-    { img: "s167.png", wear: "FT / 0.3654", price: "1.67 ₽", chance: 18, rarity: "#4b69ff" },
-    { img: "s500.png", wear: "FT / 0.2909", price: "5.00 ₽", chance: 10, rarity: "#4b69ff" },
-    { img: "s833.png", wear: "MW / 0.0839", price: "8.33 ₽", chance: 4, rarity: "#8847ff" },
-    { img: "s1249.png", wear: "FN / 0.0114", price: "12.49 ₽", chance: 2, rarity: "#d32ce6" },
-    { img: "ak.png", wear: "FT / 0.3380", price: "23.32 ₽", chance: 1, rarity: "#eb4b4b", top: true },
+    { code: "tickets", img: null, wear: "Утешительный приз", price: "+3 билета в розыгрыше", chance: 65, rarity: "#8b9aab" },
+    { code: "s167", img: "s167.png", wear: "FT / 0.3654", price: "1.67 ₽", chance: 18, rarity: "#4b69ff" },
+    { code: "s500", img: "s500.png", wear: "FT / 0.2909", price: "5.00 ₽", chance: 10, rarity: "#4b69ff" },
+    { code: "s833", img: "s833.png", wear: "MW / 0.0839", price: "8.33 ₽", chance: 4, rarity: "#8847ff" },
+    { code: "s1249", img: "s1249.png", wear: "FN / 0.0114", price: "12.49 ₽", chance: 2, rarity: "#d32ce6" },
+    { code: "ak", img: "ak.png", wear: "FT / 0.3380", price: "23.32 ₽", chance: 1, rarity: "#eb4b4b", top: true },
   ];
-  $("items").innerHTML = ITEMS.map((it) => `
+  const card = (it, chance = true) => `
     <div class="item${it.top ? " top" : ""}" style="--rarity:${it.rarity}">
-      <span class="item-chance">${it.chance}%</span>
-      ${it.img ? `<img src="${it.img}" alt="" width="156" height="114" loading="lazy">` : TICKET}
+      ${chance ? `<span class="item-chance">${it.chance}%</span>` : ""}
+      ${it.img ? `<img src="${it.img}" alt="" width="156" height="114">` : TICKET}
       <div class="item-wear">${it.wear}</div>
       <div class="item-price">${it.price}</div>
-    </div>`).join("");
+    </div>`;
+  $("items").innerHTML = ITEMS.map((it) => card(it)).join("");
+
+  // The strip: random cards (weighted like the case) with the prize at WIN; it slides so WIN stops under the line.
+  const CARD_W = 110 + 8, STRIP = 50, WIN = 42;
+  function weighted() {
+    let r = Math.random() * 100;
+    return ITEMS.find((it) => (r -= it.chance) < 0) || ITEMS[0];
+  }
+  function fillStrip(win) {
+    // At rest the strip shows every item in turn; a replay is drawn with the case's odds.
+    const cards = Array.from({ length: STRIP }, (_, i) => (win ? weighted() : ITEMS[(ITEMS.length - i % ITEMS.length) % ITEMS.length]));
+    if (win) cards[WIN] = win;
+    $("track").style.transition = "none";
+    $("track").innerHTML = cards.map((it) => card(it, false)).join("");
+  }
+  function slideTo(index, seconds) {
+    const center = $("roll").clientWidth / 2;
+    const jitter = (Math.random() - 0.5) * 80;  // stop somewhere on the card, not always dead centre
+    const x = index * CARD_W + 55 - center + jitter;
+    $("track").style.transition = seconds ? `transform ${seconds}s cubic-bezier(.08, .6, .12, 1)` : "none";
+    $("track").style.transform = `translateX(${-x}px)`;
+  }
+  fillStrip(null);
+  requestAnimationFrame(() => slideTo(3, 0));
+
+  function replay(code) {
+    const win = ITEMS.find((it) => it.code === code);
+    if (!win) return;
+    $("spin").classList.add("hidden");
+    $("spin-note").textContent = "";
+    fillStrip(win);
+    slideTo(3, 0);
+    $("track").offsetWidth;  // apply the start position before the slide
+    setTimeout(() => slideTo(WIN, 6), 300);
+    setTimeout(() => {
+      $("track").children[WIN].classList.add("win");
+      if (inTelegram) tg.HapticFeedback.notificationOccurred("success");
+      $("result").classList.remove("hidden");
+      $("result").innerHTML = win.img
+        ? `🎉 Тебе выпал скин <b>${win.price}</b><br>${win.wear}<br><br>Он уже в «🎒 Мои призы» в боте.`
+        : `🎟 <b>+3 билета</b> в розыгрыше!<br><br>Следующий бесплатный кейс — завтра.`;
+    }, 6500);
+  }
 
   function spin() {
     if (!inTelegram) {
-      $("note").textContent = "Предпросмотр: крутить можно, только если открыть страницу из бота в Telegram.";
+      $("spin-note").textContent = "Предпросмотр: крутить можно, только если открыть страницу из бота в Telegram.";
       return;
     }
     // sendData works only when the page was opened from the bot's keyboard button, and the bot spins
     // the case nowhere else.
     if (tg.initDataUnsafe.query_id) {
-      $("note").textContent = "Открой кейс кнопкой «💎 Бесплатный кейс со скинами» в меню бота — крутить можно только оттуда.";
+      $("spin-note").textContent = "Крутить можно только из меню бота: кнопка «💎 Бесплатный кейс со скинами».";
       return;
     }
-    tg.sendData(JSON.stringify({ action: "free_case" }));
+    $("spin").disabled = true;
+    // A quick run of the strip while Telegram hands the press to the bot and closes the page.
+    slideTo(STRIP - 6, 1.2);
+    setTimeout(() => tg.sendData(JSON.stringify({ action: "free_case" })), 900);
   }
   $("spin").addEventListener("click", spin);
 
@@ -303,11 +370,14 @@
     $("tab-case").classList.toggle("hidden", name !== "case");
     $("tab-tourney").classList.toggle("hidden", name !== "tourney");
     $("note").textContent = "";
+    // The case has its own button on the page; Telegram's bottom button is only for the tournament form.
     if (inTelegram) {
-      tg.MainButton.offClick(submit);
-      tg.MainButton.offClick(spin);
-      tg.MainButton.setText(name === "case" ? "🎰 Крутить бесплатно" : "Зарегистрировать команду");
-      tg.MainButton.onClick(name === "case" ? spin : submit);
+      if (name === "case") {
+        tg.MainButton.hide();
+      } else {
+        tg.MainButton.setText("Зарегистрировать команду");
+        tg.MainButton.show();
+      }
     }
     window.scrollTo(0, 0);
   }
@@ -316,12 +386,13 @@
   if (inTelegram) {
     tg.ready();
     tg.expand();
-    tg.MainButton.show();
+    tg.MainButton.onClick(submit);
   } else {
     $("send").classList.remove("hidden");
-    $("spin").classList.remove("hidden");
   }
-  showTab(location.hash === "#case" ? "case" : "tourney");
+  const roll = location.hash.match(/^#roll=(\w+)/);
+  showTab(roll || location.hash === "#case" ? "case" : "tourney");
+  if (roll) replay(roll[1]);
 </script>
 </body>
 </html>
