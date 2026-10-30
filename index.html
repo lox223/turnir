@@ -350,11 +350,13 @@
     }, 6500);
   }
 
-  // With the tunnel the bot passes its address as ?api=: the page asks it directly and the strip stops
-  // on the prize here. Telegram's signed initData tells the bot who is spinning.
-  const API = params.get("api");
-  const live = Boolean(API && inTelegram && tg.initData);
-  if (live) $("spin-note").textContent = "Жми — и смотри, что выпадет 👆";
+  // The page asks the bot directly (through the ngrok tunnel) and the strip stops on the prize here.
+  // Telegram's signed initData tells the bot who is spinning; a page opened without it (from an old
+  // keyboard button) sends the player to the bot for a button that has it.
+  const API = params.get("api") || "https://posh-cauterize-buffing.ngrok-free.dev";
+  const live = Boolean(inTelegram && tg.initData);
+  $("spin-note").textContent = live ? "Жми — и смотри, что выпадет 👆"
+    : inTelegram ? "Нажми — бот пришлёт кнопку «💎 Открыть кейс», с ней кейс крутится прямо здесь." : "";
 
   async function spinLive() {
     const button = $("spin");
@@ -391,16 +393,8 @@
       spinLive();
       return;
     }
-    // sendData works only when the page was opened from the bot's keyboard button, and the bot spins
-    // the case nowhere else.
-    if (tg.initDataUnsafe.query_id) {
-      $("spin-note").textContent = "Крутить можно только из меню бота: кнопка «💎 Бесплатный кейс со скинами».";
-      return;
-    }
-    $("spin").disabled = true;
-    // A quick run of the strip while Telegram hands the press to the bot and closes the page.
-    slideTo(STRIP - 6, 1.2);
-    setTimeout(() => tg.sendData(JSON.stringify({ action: "free_case" })), 900);
+    tg.openTelegramLink(`https://t.me/${BOT}?start=free`);
+    tg.close();
   }
   $("spin").addEventListener("click", spin);
 
