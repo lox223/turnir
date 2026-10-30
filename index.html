@@ -328,11 +328,13 @@
   fillStrip(null);
   requestAnimationFrame(() => slideTo(3, 0));
 
-  function replay(code) {
+  // text: the bot's own result (HTML) when it answered right here; null when replaying from the chat.
+  function replay(code, text = null, done = null) {
     const win = ITEMS.find((it) => it.code === code);
     if (!win) return;
-    $("spin").classList.add("hidden");
+    if (!text) $("spin").classList.add("hidden");
     $("spin-note").textContent = "";
+    $("result").classList.add("hidden");
     fillStrip(win);
     slideTo(3, 0);
     $("track").offsetWidth;  // apply the start position before the slide
@@ -341,15 +343,52 @@
       $("track").children[WIN].classList.add("win");
       if (inTelegram) tg.HapticFeedback.notificationOccurred("success");
       $("result").classList.remove("hidden");
-      $("result").innerHTML = win.img
+      $("result").innerHTML = text ? text.replace(/\n/g, "<br>") : win.img
         ? `🎉 Тебе выпал скин <b>${win.price}</b><br>${win.wear}<br><br>Он уже в «🎒 Мои призы» в боте.`
         : `🎟 <b>+3 билета</b> в розыгрыше!<br><br>Следующий бесплатный кейс — завтра.`;
+      if (done) done();
     }, 6500);
+  }
+
+  // With the tunnel the bot passes its address as ?api=: the page asks it directly and the strip stops
+  // on the prize here. Telegram's signed initData tells the bot who is spinning.
+  const API = params.get("api");
+  const live = Boolean(API && inTelegram && tg.initData);
+  if (live) $("spin-note").textContent = "Жми — и смотри, что выпадет 👆";
+
+  async function spinLive() {
+    const button = $("spin");
+    button.disabled = true;
+    button.textContent = "🎰 Крутим…";
+    const reset = () => { button.disabled = false; button.textContent = "🎰 Крутить бесплатно"; };
+    let data;
+    try {
+      const r = await fetch(API.replace(/\/$/, "") + "/api/case/spin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" },
+        body: JSON.stringify({ initData: tg.initData }),
+      });
+      data = await r.json();
+    } catch (e) {
+      data = { error: "Не получилось связаться с ботом. Попробуй ещё раз через минуту." };
+    }
+    if (data.error) {
+      $("result").classList.remove("hidden");
+      $("result").textContent = data.error;
+      tg.HapticFeedback.notificationOccurred("error");
+      reset();
+      return;
+    }
+    replay(data.code, data.text, reset);
   }
 
   function spin() {
     if (!inTelegram) {
       $("spin-note").textContent = "Предпросмотр: крутить можно, только если открыть страницу из бота в Telegram.";
+      return;
+    }
+    if (live) {
+      spinLive();
       return;
     }
     // sendData works only when the page was opened from the bot's keyboard button, and the bot spins
