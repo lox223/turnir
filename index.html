@@ -288,11 +288,10 @@
       $("note").textContent = "Предпросмотр: крутить можно, только если открыть страницу из бота в Telegram.";
       return;
     }
-    // sendData works only when the page was opened from the bot's keyboard button; from anywhere else
-    // (an inline button, a link) the bot spins the case after /start free.
+    // sendData works only when the page was opened from the bot's keyboard button, and the bot spins
+    // the case nowhere else.
     if (tg.initDataUnsafe.query_id) {
-      tg.openTelegramLink(`https://t.me/${BOT}?start=free`);
-      tg.close();
+      $("note").textContent = "Открой кейс кнопкой «💎 Бесплатный кейс со скинами» в меню бота — крутить можно только оттуда.";
       return;
     }
     tg.sendData(JSON.stringify({ action: "free_case" }));
