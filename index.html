@@ -77,6 +77,8 @@
   #spin { width: 100%; padding: 16px; border: 0; border-radius: 12px; background: var(--accent);
           color: var(--accent-text); font-size: 17px; font-weight: 700; margin: 0 0 6px; }
   #spin:disabled { opacity: .6; }
+  #take { margin-top: 12px; width: 100%; padding: 13px; border: 0; border-radius: 12px; background: #4b69ff;
+          color: #fff; font-size: 16px; font-weight: 700; }
   /* The roulette: a strip of cards that slides under the yellow line and stops on the prize. */
   .roll { position: relative; overflow: hidden; border-radius: 14px; background: #24222e; padding: 10px 0;
           margin-bottom: 12px; }
@@ -346,6 +348,19 @@
       $("result").innerHTML = text ? text.replace(/\n/g, "<br>") : win.img
         ? `🎉 Тебе выпал скин <b>${win.price}</b><br>${win.wear}<br><br>Он уже в «🎒 Мои призы» в боте.`
         : `🎟 <b>+3 билета</b> в розыгрыше!<br><br>Следующий бесплатный кейс — завтра.`;
+      // A skin: the way to take it, right under the result (opens «Мои призы» in the bot).
+      if (win.img && inTelegram) {
+        const take = document.createElement("button");
+        take.type = "button";
+        take.id = "take";
+        take.textContent = "🎒 Забрать скин";
+        take.addEventListener("click", () => {
+          tg.openTelegramLink(`https://t.me/${BOT}?start=prizes`);
+          tg.close();
+        });
+        $("result").appendChild(document.createElement("br"));
+        $("result").appendChild(take);
+      }
       if (done) done();
     }, 6500);
   }
