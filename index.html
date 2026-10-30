@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="ru">
 <head>
 <meta charset="utf-8">
@@ -60,10 +60,52 @@
   #invite { width: 100%; padding: 12px; border: 1px solid var(--accent); border-radius: 10px;
             background: transparent; color: var(--accent); font-size: 15px; font-weight: 600; }
   .hidden { display: none; }
+  .tabs { display: flex; gap: 6px; background: var(--card); border-radius: 12px; padding: 4px; margin-bottom: 16px; }
+  .tabs button { flex: 1; padding: 10px; border: 0; border-radius: 9px; background: transparent; color: var(--hint);
+                 font-size: 15px; font-weight: 600; }
+  .tabs button.on { background: var(--accent); color: var(--accent-text); }
+  /* Case cards look like the market's: dark card, skin, wear / float, price. */
+  .items { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-bottom: 12px; }
+  .item { position: relative; background: #312f3d; border-radius: 12px; padding: 0 10px 10px; overflow: hidden;
+          border-bottom: 3px solid var(--rarity, #8b9aab); }
+  .item img, .item svg { display: block; width: 100%; height: auto; aspect-ratio: 156 / 114; object-fit: contain; }
+  .item-wear { color: #9a98a6; font-size: 12px; }
+  .item-price { color: #fff; font-weight: 700; font-size: 16px; }
+  .item-chance { position: absolute; top: 8px; left: 8px; background: rgba(0, 0, 0, .45); color: #fff;
+                 border-radius: 6px; padding: 1px 7px; font-size: 12px; font-weight: 600; }
+  .item.top { box-shadow: 0 0 0 1px #e4ae39 inset; }
+  #spin { width: 100%; padding: 14px; border: 0; border-radius: 12px; background: var(--accent);
+          color: var(--accent-text); font-size: 16px; font-weight: 600; margin-top: 4px; }
 </style>
 </head>
 <body>
 <main>
+  <nav class="tabs">
+    <button type="button" data-tab="tourney" class="on">🏟 Турнир</button>
+    <button type="button" data-tab="case">💎 Кейс</button>
+  </nav>
+
+  <section id="tab-case" class="hidden">
+    <h1>💎 Бесплатный кейс</h1>
+    <div class="sub">Раз в сутки и бесплатно. Внутри — настоящие скины CS2.</div>
+    <div class="items" id="items"></div>
+    <fieldset class="conditions">
+      <legend>📋 Правила</legend>
+      <ol>
+        <li>Крутить можно <b>1 раз в сутки</b>, если ты участвуешь в текущем розыгрыше.</li>
+        <li>Скины выпадают подписчикам канала, которые в боте <b>от 2 дней</b>. До этого вместо скина — билеты.</li>
+        <li>Скин можно выиграть <b>раз в неделю</b>, AK-47 — один в неделю на весь бот. Если дневной фонд скинов
+          закончился, до завтра падают билеты. Бот всегда пишет, почему.</li>
+        <li>Скины копятся в «🎒 Мои призы», вывод от <b>10 ₽</b> на трейд-ссылку Steam. Выдаёт только
+          <b>@YooAksel</b> — денег за вывод никто никогда не просит.</li>
+      </ol>
+    </fieldset>
+    <!-- Outside Telegram there is no MainButton, so this button is the fallback. -->
+    <button type="button" id="spin" class="hidden">🎰 Крутить бесплатно</button>
+    <div class="note">Результат придёт в чат с ботом.</div>
+  </section>
+
+  <section id="tab-tourney">
   <h1>🏟 Турнир CS2 · 2x2</h1>
   <div class="sub">Регистрация команды. Капитан — тот, кто отправляет заявку.</div>
   <div class="badges">
@@ -137,12 +179,14 @@
     <!-- Outside Telegram there is no MainButton, so this button is the fallback. -->
     <button type="submit" id="send" class="hidden">Зарегистрировать команду</button>
   </form>
+  </section>
   <div class="note" id="note"></div>
 </main>
 
 <script>
   const tg = window.Telegram && window.Telegram.WebApp;
-  const inTelegram = Boolean(tg && tg.initData);
+  // Not initData: a page opened from a reply-keyboard button (the only kind that can sendData) gets none.
+  const inTelegram = Boolean(tg && tg.platform && tg.platform !== "unknown");
   const $ = (id) => document.getElementById(id);
   const params = new URLSearchParams(location.search);
   const BOT = params.get("bot") || "YooStonkBot";
@@ -213,15 +257,72 @@
     $(id).addEventListener("input", () => setError(id, "")));
   $("rules").addEventListener("change", () => setError("rules", ""));
 
+  // The case's contents; the bot has the same list and decides what drops.
+  const TICKET = `<svg viewBox="0 0 156 114" xmlns="http://www.w3.org/2000/svg">
+    <g transform="rotate(-12 78 57)">
+      <path d="M30 32h96a8 8 0 0 1 8 8v8a9 9 0 0 0 0 18v8a8 8 0 0 1-8 8H30a8 8 0 0 1-8-8v-8a9 9 0 0 0 0-18v-8a8 8 0 0 1 8-8z"
+            fill="#e4ae39"/>
+      <path d="M100 36v42" stroke="#312f3d" stroke-width="2" stroke-dasharray="4 4"/>
+      <text x="61" y="66" text-anchor="middle" font-size="26" font-weight="800" fill="#312f3d"
+            font-family="-apple-system, Segoe UI, Roboto, sans-serif">+3</text>
+      <text x="117" y="63" text-anchor="middle" font-size="16">🎟</text>
+    </g></svg>`;
+  const ITEMS = [
+    { img: null, wear: "Утешительный приз", price: "+3 билета в розыгрыше", chance: 65, rarity: "#8b9aab" },
+    { img: "s167.png", wear: "FT / 0.3654", price: "1.67 ₽", chance: 18, rarity: "#4b69ff" },
+    { img: "s500.png", wear: "FT / 0.2909", price: "5.00 ₽", chance: 10, rarity: "#4b69ff" },
+    { img: "s833.png", wear: "MW / 0.0839", price: "8.33 ₽", chance: 4, rarity: "#8847ff" },
+    { img: "s1249.png", wear: "FN / 0.0114", price: "12.49 ₽", chance: 2, rarity: "#d32ce6" },
+    { img: "ak.png", wear: "FT / 0.3380", price: "23.32 ₽", chance: 1, rarity: "#eb4b4b", top: true },
+  ];
+  $("items").innerHTML = ITEMS.map((it) => `
+    <div class="item${it.top ? " top" : ""}" style="--rarity:${it.rarity}">
+      <span class="item-chance">${it.chance}%</span>
+      ${it.img ? `<img src="${it.img}" alt="" width="156" height="114" loading="lazy">` : TICKET}
+      <div class="item-wear">${it.wear}</div>
+      <div class="item-price">${it.price}</div>
+    </div>`).join("");
+
+  function spin() {
+    if (!inTelegram) {
+      $("note").textContent = "Предпросмотр: крутить можно, только если открыть страницу из бота в Telegram.";
+      return;
+    }
+    // sendData works only when the page was opened from the bot's keyboard button; from anywhere else
+    // (an inline button, a link) the bot spins the case after /start free.
+    if (tg.initDataUnsafe.query_id) {
+      tg.openTelegramLink(`https://t.me/${BOT}?start=free`);
+      tg.close();
+      return;
+    }
+    tg.sendData(JSON.stringify({ action: "free_case" }));
+  }
+  $("spin").addEventListener("click", spin);
+
+  function showTab(name) {
+    document.querySelectorAll(".tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === name));
+    $("tab-case").classList.toggle("hidden", name !== "case");
+    $("tab-tourney").classList.toggle("hidden", name !== "tourney");
+    $("note").textContent = "";
+    if (inTelegram) {
+      tg.MainButton.offClick(submit);
+      tg.MainButton.offClick(spin);
+      tg.MainButton.setText(name === "case" ? "🎰 Крутить бесплатно" : "Зарегистрировать команду");
+      tg.MainButton.onClick(name === "case" ? spin : submit);
+    }
+    window.scrollTo(0, 0);
+  }
+  document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
+
   if (inTelegram) {
     tg.ready();
     tg.expand();
-    tg.MainButton.setText("Зарегистрировать команду");
-    tg.MainButton.onClick(submit);
     tg.MainButton.show();
   } else {
     $("send").classList.remove("hidden");
+    $("spin").classList.remove("hidden");
   }
+  showTab(location.hash === "#case" ? "case" : "tourney");
 </script>
 </body>
 </html>
