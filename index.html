@@ -117,6 +117,10 @@
   .roll-marker::after { bottom: 0; border-bottom-color: #ffd45a; border-top-width: 0; }
   /* confetti-style effects on win are drawn here */
   #fx { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
+  #tab-case { position: relative; }
+  .snd { position: absolute; right: 0; top: 0; width: 38px; height: 38px; border: 0; border-radius: 50%; z-index: 5;
+         background: var(--card); color: var(--text); font-size: 18px; line-height: 1; cursor: pointer; }
+  .snd:active { transform: scale(.94); }
   @media (prefers-reduced-motion: reduce) {
     .item.top::after, .roll .item.win { animation: none; }
   }
@@ -135,6 +139,7 @@
   </nav>
 
   <section id="tab-case" class="hidden">
+    <button type="button" id="snd" class="snd" aria-label="Звук" aria-pressed="true">🔊</button>
     <h1>💎 Бесплатный кейс</h1>
     <div class="sub">Раз в сутки и бесплатно. Внутри — настоящие скины CS2.</div>
     <div class="roll" id="roll"><div class="roll-marker"></div><div class="roll-track" id="track"></div></div>
@@ -504,6 +509,58 @@
   }
   const TIER = { tickets: 0, s167: 1, s500: 2, s833: 3, s1249: 4, ak: 5 };
 
+  // ---- Sounds: studio-made one-shots played through Web Audio so they stay locked to the strip. ----
+  // open: the tap · roll: ticks timed to the strip's slow-down (starts together with the slide) · win / top / tickets: the prize.
+  // Browsers only start audio after a tap on the page, so a replay opened straight from the chat may stay silent. That's fine.
+  const SFX = (() => {
+    const FILES = { open: "sfx_open.mp3", roll: "sfx_roll.mp3", win: "sfx_win.mp3", top: "sfx_win_top.mp3", tickets: "sfx_win_tickets.mp3" };
+    const bufs = {};
+    let ctx = null, gain = null, loading = null, on = true, unlocked = false;
+    try { on = localStorage.getItem("sfx") !== "off"; } catch (e) { /* storage can be unavailable: default to on */ }
+    const btn = $("snd");
+    const paint = () => { btn.textContent = on ? "🔊" : "🔇"; btn.setAttribute("aria-pressed", String(on)); btn.title = on ? "Звук включён" : "Звук выключен"; };
+    function ensure() {
+      if (ctx) return ctx;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      try { ctx = new AC(); gain = ctx.createGain(); gain.gain.value = 0.9; gain.connect(ctx.destination); } catch (e) { ctx = null; }
+      return ctx;
+    }
+    function load() {   // fetch + decode once; a missing file only silences that one sound
+      if (loading) return loading;
+      const c = ensure();
+      if (!c) return Promise.resolve();
+      loading = Promise.all(Object.entries(FILES).map(async ([name, file]) => {
+        try {
+          const ab = await (await fetch(file + "?v=1")).arrayBuffer();
+          bufs[name] = await new Promise((ok, fail) => { const p = c.decodeAudioData(ab, ok, fail); if (p && p.catch) p.catch(fail); });
+        } catch (e) { /* ignore */ }
+      }));
+      return loading;
+    }
+    function unlock() {   // call from a tap
+      const c = ensure();
+      if (!c) return Promise.resolve(false);
+      const ready = c.state === "running" ? Promise.resolve() : c.resume().catch(() => {});
+      load();
+      return ready.then(() => { unlocked = c.state === "running"; return unlocked; });
+    }
+    function play(name, offset = 0) {
+      if (!on || !unlocked || !ctx || ctx.state !== "running" || !bufs[name]) return false;
+      try { const s = ctx.createBufferSource(); s.buffer = bufs[name]; s.connect(gain); s.start(0, offset); return true; } catch (e) { return false; }
+    }
+    function toggle() {
+      on = !on;
+      try { localStorage.setItem("sfx", on ? "on" : "off"); } catch (e) { /* ignore */ }
+      paint();
+      if (on) unlock();
+    }
+    paint();
+    btn.addEventListener("click", toggle);
+    document.addEventListener("pointerdown", unlock, { once: true, passive: true });
+    return { load, unlock, play, toggle };
+  })();
+
   // text: the bot's own result (HTML) when it answered right here; null when replaying from the chat.
   function replay(code, text = null, done = null) {
     const win = ITEMS.find((it) => it.code === code);
@@ -516,13 +573,14 @@
     fillStrip(win);
     slideTo(3, 0);
     $("track").offsetWidth;  // apply the start position before the slide
-    setTimeout(() => { slideTo(WIN, 6); tickWhileSliding(6000); }, 300);
+    setTimeout(() => { slideTo(WIN, 6); tickWhileSliding(6000); SFX.play("roll", 0.3); }, 300);   // the file has 0.3 s of lead-in
     setTimeout(() => {
       const winCard = $("track").children[WIN];
       winCard.classList.add("win");
       $("roll").classList.add("done");
       const box = winCard.getBoundingClientRect();
       FX.win(box.left + box.width / 2, box.top + box.height / 2, win.rarity, TIER[win.code] ?? 0);
+      SFX.play(win.code === "ak" ? "top" : win.img ? "win" : "tickets");
       if (inTelegram) tg.HapticFeedback.notificationOccurred("success");
       $("result").classList.remove("hidden");
       $("result").innerHTML = text ? text.replace(/\n/g, "<br>") : win.img
@@ -557,6 +615,7 @@
     const button = $("spin");
     button.disabled = true;
     button.textContent = "🎰 Крутим…";
+    SFX.unlock().then(() => SFX.play("open"));
     const reset = () => { button.disabled = false; button.textContent = "🎰 Крутить бесплатно"; };
     let data;
     try {
@@ -608,6 +667,7 @@
       }
     }
     window.scrollTo(0, 0);
+    if (name === "case") SFX.load();
   }
   document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
 
