@@ -129,21 +129,23 @@
   .result b { color: var(--accent); font-size: 18px; }
   h2 { font-size: 17px; margin: 16px 0 10px; }
   /* Live strip above the case: the latest drops of everyone, newest on the left. */
-  .feed { margin: 0 0 12px; }
-  .feed-head { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--hint); margin-bottom: 8px; }
-  .live-dot { width: 8px; height: 8px; border-radius: 50%; background: #ff4d4d; animation: livePulse 1.6s ease-in-out infinite; }
+  .feed { margin: 0 0 8px; }
+  .feed-head { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--hint); margin-bottom: 5px; }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: #ff4d4d; animation: livePulse 1.6s ease-in-out infinite; }
   @keyframes livePulse { 0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(255, 77, 77, .55); }
-                         50% { opacity: .55; box-shadow: 0 0 0 6px rgba(255, 77, 77, 0); } }
-  .feed-track { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none;
+                         50% { opacity: .55; box-shadow: 0 0 0 5px rgba(255, 77, 77, 0); } }
+  .feed-track { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none;
                 -webkit-overflow-scrolling: touch; }
   .feed-track::-webkit-scrollbar { display: none; }
-  .fd { flex: 0 0 104px; min-width: 0; background: #312f3d; border-radius: 10px; padding: 0 8px 8px;
-        border-bottom: 3px solid var(--rarity, #8b9aab); }
-  .fd img, .fd svg { display: block; width: 100%; height: auto; aspect-ratio: 156 / 114; object-fit: contain;
+  /* a compact chip: a small picture on the left, three short lines on the right */
+  .fd { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; min-width: 0; background: #312f3d;
+        border-radius: 8px; padding: 3px 9px 3px 3px; border-bottom: 2px solid var(--rarity, #8b9aab); }
+  .fd img, .fd svg { display: block; flex: none; width: 42px; height: 31px; object-fit: contain;
                      -webkit-user-drag: none; user-select: none; pointer-events: none; }
-  .fd-name { color: #fff; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .fd-what { color: #fff; font-size: 12px; white-space: nowrap; }
-  .fd-ago { color: #9a98a6; font-size: 11px; white-space: nowrap; }
+  .fd-text { min-width: 0; line-height: 1.2; }
+  .fd-name { color: #fff; font-size: 11px; font-weight: 600; white-space: nowrap; max-width: 84px; overflow: hidden; text-overflow: ellipsis; }
+  .fd-what { color: #fff; font-size: 11px; white-space: nowrap; }
+  .fd-ago { color: #9a98a6; font-size: 10px; white-space: nowrap; }
   .fd.new { animation: fdIn .5s ease-out; }
   @keyframes fdIn { from { opacity: 0; transform: translateX(-16px) scale(.96); } to { opacity: 1; transform: none; } }
   @media (prefers-reduced-motion: reduce) { .live-dot, .fd.new { animation: none; } }
@@ -727,7 +729,10 @@
         what.textContent = it.img ? it.price : "+3 билета";
         const when = document.createElement("div");
         when.className = "fd-ago";
-        el.append(who, what, when);
+        const text = document.createElement("div");
+        text.className = "fd-text";
+        text.append(who, what, when);
+        el.appendChild(text);
         track.appendChild(el);
         rows.push({ el: when, age: d.age });
       }
