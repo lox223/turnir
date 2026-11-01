@@ -128,6 +128,25 @@
             font-size: 15px; }
   .result b { color: var(--accent); font-size: 18px; }
   h2 { font-size: 17px; margin: 16px 0 10px; }
+  /* Live strip above the case: the latest drops of everyone, newest on the left. */
+  .feed { margin: 0 0 12px; }
+  .feed-head { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--hint); margin-bottom: 8px; }
+  .live-dot { width: 8px; height: 8px; border-radius: 50%; background: #ff4d4d; animation: livePulse 1.6s ease-in-out infinite; }
+  @keyframes livePulse { 0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(255, 77, 77, .55); }
+                         50% { opacity: .55; box-shadow: 0 0 0 6px rgba(255, 77, 77, 0); } }
+  .feed-track { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none;
+                -webkit-overflow-scrolling: touch; }
+  .feed-track::-webkit-scrollbar { display: none; }
+  .fd { flex: 0 0 104px; min-width: 0; background: #312f3d; border-radius: 10px; padding: 0 8px 8px;
+        border-bottom: 3px solid var(--rarity, #8b9aab); }
+  .fd img, .fd svg { display: block; width: 100%; height: auto; aspect-ratio: 156 / 114; object-fit: contain;
+                     -webkit-user-drag: none; user-select: none; pointer-events: none; }
+  .fd-name { color: #fff; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fd-what { color: #fff; font-size: 12px; white-space: nowrap; }
+  .fd-ago { color: #9a98a6; font-size: 11px; white-space: nowrap; }
+  .fd.new { animation: fdIn .5s ease-out; }
+  @keyframes fdIn { from { opacity: 0; transform: translateX(-16px) scale(.96); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .live-dot, .fd.new { animation: none; } }
 </style>
 </head>
 <body>
@@ -142,6 +161,10 @@
     <button type="button" id="snd" class="snd" aria-label="Звук" aria-pressed="true">🔊</button>
     <h1>💎 Бесплатный кейс</h1>
     <div class="sub">Раз в сутки и бесплатно. Внутри — настоящие скины CS2.</div>
+    <div class="feed hidden" id="feed">
+      <div class="feed-head"><span class="live-dot"></span><span>Live · последние дропы</span></div>
+      <div class="feed-track" id="feed-track"></div>
+    </div>
     <div class="roll" id="roll"><div class="roll-marker"></div><div class="roll-track" id="track"></div></div>
     <div class="result hidden" id="result"></div>
     <button type="button" id="spin">🎰 Крутить бесплатно</button>
@@ -565,6 +588,7 @@
   function replay(code, text = null, done = null) {
     const win = ITEMS.find((it) => it.code === code);
     if (!win) return;
+    FEED.hold(7500);   // the live strip would show this very drop before the roulette stops
     if (!text) $("spin").classList.add("hidden");
     $("spin-note").textContent = "";
     $("result").classList.add("hidden");
@@ -652,6 +676,93 @@
   }
   $("spin").addEventListener("click", spin);
 
+  // ---- Live strip above the case: what the free case gave to people lately ("минуту назад") ----
+  // The bot answers GET /api/case/feed with {items: [{id, code, who, age}]}, newest first; who is already masked.
+  const FEED = (() => {
+    const box = $("feed"), track = $("feed-track");
+    let list = [], rows = [], baseAt = 0, seen = null, lastKey = "", holdUntil = 0, busy = false;
+    let pollTimer = 0, tickTimer = 0;
+    const plural = (n, one, few, many) => {
+      const m10 = n % 10, m100 = n % 100;
+      return m10 === 1 && m100 !== 11 ? one : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? few : many;
+    };
+    function ago(sec) {
+      if (sec < 30) return "только что";
+      const m = Math.floor(sec / 60);
+      if (m <= 1) return "минуту назад";
+      if (m < 60) return `${m} ${plural(m, "минуту", "минуты", "минут")} назад`;
+      const h = Math.floor(m / 60);
+      if (h === 1) return "час назад";
+      if (h < 24) return `${h} ${plural(h, "час", "часа", "часов")} назад`;
+      const d = Math.floor(h / 24);
+      return d === 1 ? "вчера" : `${d} ${plural(d, "день", "дня", "дней")} назад`;
+    }
+    function tickAgo() {
+      const extra = (Date.now() - baseAt) / 1000;
+      rows.forEach((r) => { r.el.textContent = ago(r.age + extra); });
+    }
+    function render() {
+      const key = list.map((d) => d.id).join(",");
+      if (key === lastKey) { tickAgo(); return; }   // nothing new: only the times move
+      lastKey = key;
+      const keep = track.scrollLeft;
+      track.textContent = "";
+      rows = [];
+      const ids = new Set();
+      for (const d of list) {
+        const it = ITEMS.find((x) => x.code === d.code);
+        if (!it) continue;
+        ids.add(d.id);
+        const el = document.createElement("div");
+        el.className = "fd" + (seen && !seen.has(d.id) ? " new" : "");
+        el.style.setProperty("--rarity", it.rarity);
+        el.innerHTML = it.img
+          ? `<img src="${it.img}?v=2" alt="" width="156" height="114" decoding="async" draggable="false">`
+          : TICKET;
+        const who = document.createElement("div");
+        who.className = "fd-name";
+        who.textContent = d.who;   // text, never HTML: the name comes from a player
+        const what = document.createElement("div");
+        what.className = "fd-what";
+        what.textContent = it.img ? it.price : "+3 билета";
+        const when = document.createElement("div");
+        when.className = "fd-ago";
+        el.append(who, what, when);
+        track.appendChild(el);
+        rows.push({ el: when, age: d.age });
+      }
+      seen = ids;
+      box.classList.toggle("hidden", rows.length === 0);
+      track.scrollLeft = keep;
+      tickAgo();
+    }
+    async function load() {
+      if (busy || Date.now() < holdUntil) return;
+      busy = true;
+      try {
+        const r = await fetch(API.replace(/\/$/, "") + "/api/case/feed", {
+          headers: { "ngrok-skip-browser-warning": "1" }, cache: "no-store",
+        });
+        const data = await r.json();
+        if (Array.isArray(data.items) && Date.now() >= holdUntil) { list = data.items; baseAt = Date.now(); render(); }
+      } catch (e) { /* no connection: the strip stays as it was, or stays hidden */ }
+      busy = false;
+    }
+    function stop() { clearInterval(pollTimer); clearInterval(tickTimer); }
+    function start() {
+      stop();
+      load();
+      pollTimer = setInterval(load, 15000);
+      tickTimer = setInterval(tickAgo, 10000);
+    }
+    function hold(ms) { holdUntil = Date.now() + ms; setTimeout(load, ms + 300); }
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) stop();
+      else if (!$("tab-case").classList.contains("hidden")) start();
+    });
+    return { start, stop, hold };
+  })();
+
   function showTab(name) {
     document.querySelectorAll(".tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === name));
     $("tab-case").classList.toggle("hidden", name !== "case");
@@ -667,7 +778,7 @@
       }
     }
     window.scrollTo(0, 0);
-    if (name === "case") SFX.load();
+    if (name === "case") { SFX.load(); FEED.start(); } else { FEED.stop(); }
   }
   document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
 
