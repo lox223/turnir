@@ -382,7 +382,8 @@
         <li>Скин можно выиграть <b>раз в неделю</b>, AK-47 — один в неделю на весь бот. Если дневной фонд скинов
           закончился, до завтра падают билеты. Бот всегда пишет, почему.</li>
         <li>🌀 <b>Раз в 2 дня</b> на телефоне можно потрясти его ~10 секунд и получить бонусное открытие: тот же кейс
-          с теми же правилами, а обычный на сегодня остаётся.</li>
+          с теми же правилами, а обычный на сегодня остаётся.
+          Суперкейсов <b>10 в день на весь бот</b>: кто успел, тот и открыл.</li>
         <li>Скины копятся в «🎒 Мои призы», вывод от <b>10 ₽</b> на трейд-ссылку Steam. Выдаёт только
           <b>@YooAksel</b> — денег за вывод никто никогда не просит.</li>
       </ol>
@@ -1170,8 +1171,12 @@
         text = st.error || ""; button = "";
       } else if (st.state === "offline") {
         text = st.error || "Нет связи с ботом."; button = "🔄 Проверить снова";
+      } else if (st.state === "soldout") {
+        title = "🌀 Суперкейсы разобраны"; button = "⏳ Завтра снова"; off = true;
+        text = `На сегодня все ${st.cap} суперкейсов уже разобрали. Новые появятся через ${dhm(Math.max(60, st.left - (Date.now() - stAt) / 1000))}.`;
       } else if (st.state === "ready") {
-        text = `Потряси телефон ${SECONDS} секунд и получи бонусное открытие кейса. Доступно раз в 2 дня.`;
+        text = `Потряси телефон ${SECONDS} секунд и получи бонусное открытие кейса. Раз в 2 дня.`
+          + (st.free != null ? ` Сегодня на весь бот осталось ${st.free} из ${st.cap}.` : "");
       } else {
         text = "Проверяем…"; button = "";
       }
@@ -1189,7 +1194,7 @@
       note = "";
       paint();
       clearInterval(timer);
-      if (st.state === "wait") {
+      if (st.state === "wait" || st.state === "soldout") {
         timer = setInterval(() => {
           if (st.left - (Date.now() - stAt) / 1000 <= 0) refresh(); else paint();
         }, 30000);
@@ -1299,7 +1304,7 @@
       FXS.start();
       SND.chargeStart();
       const r = run;
-      stopSensor = sensorOn(onData, () => { if (run === r) { closeStage(); note = "Датчик движения не включился. Обнови Telegram и попробуй ещё раз."; paint(); } });
+      stopSensor = sensorOn(onData, () => { if (run === r) { call("cancel"); closeStage(); note = "Датчик движения не включился. Обнови Telegram и попробуй ещё раз."; paint(); } });
       requestAnimationFrame(frame);
     }
 
@@ -1369,7 +1374,7 @@
       note = res.error || "Не получилось начать. Попробуй ещё раз.";
       paint();
     });
-    $("sk-close").addEventListener("click", () => { closeStage(); refresh(); });
+    $("sk-close").addEventListener("click", () => { call("cancel"); closeStage(); refresh(); });   // frees the supercase held for this shake
     $("sk-open").addEventListener("click", () => { closeStage(); openBonus(); });
     $("sk-later").addEventListener("click", () => { closeStage(); refresh(); });
     document.addEventListener("visibilitychange", () => {
