@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ru">
 <head>
 <meta charset="utf-8">
@@ -840,6 +840,19 @@
   // keyboard button) sends the player to the bot for a button that has it.
   const API = params.get("api") || "https://posh-cauterize-buffing.ngrok-free.dev";
   const live = Boolean(inTelegram && tg.initData);
+
+  // Every read from the bot goes through here. timeoutMs > 0 aborts a request that hangs (the tunnel is reconnecting,
+  // the app sat in the background): without it one hung request froze the live strip and the shake card until a reload.
+  async function apiJSON(path, init = {}, timeoutMs = 0) {
+    const ctl = new AbortController();
+    const timer = timeoutMs ? setTimeout(() => ctl.abort(), timeoutMs) : 0;
+    try {
+      const r = await fetch(API.replace(/\/$/, "") + path, { ...init, signal: ctl.signal });
+      return await r.json();   // an HTML answer (the tunnel's "offline" page) throws here and counts as "no connection"
+    } finally {
+      clearTimeout(timer);
+    }
+  }
   $("spin-note").textContent = live ? "Жми — и смотри, что выпадет 👆"
     : inTelegram ? "Нажми — бот пришлёт кнопку «💎 Открыть кейс», с ней кейс крутится прямо здесь." : "";
 
@@ -1139,14 +1152,14 @@
     // ---- the bot's side: state / start / finish ----
     async function call(action, extra = {}) {
       try {
-        const r = await fetch(API.replace(/\/$/, "") + "/api/case/shake", {
+        // only the read-only "state" check gets a timeout: start / finish change things on the bot and are never cut off half way
+        return await apiJSON("/api/case/shake", {
           method: "POST",
           headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" },
           body: JSON.stringify({ initData: tg.initData, action, ...extra }),
-        });
-        return await r.json();
+        }, action === "state" ? 8000 : 0);
       } catch (e) {
-        return { error: "Не получилось связаться с ботом. Попробуй ещё раз через минуту." };
+        return { error: "Не получилось связаться с ботом. Попробуй ещё раз через минуту.", net: true };
       }
     }
 
@@ -1167,6 +1180,8 @@
         title = "🎁 Суперкейс ждёт тебя!"; text = "Бонусное открытие уже разблокировано. Обычный кейс при этом остаётся."; button = "🎰 Открыть суперкейс";
       } else if (st.state === "wait") {
         text = `Следующая тряска через ${dhm(Math.max(60, st.left - (Date.now() - stAt) / 1000))}.`; button = "⏳ Пока отдыхаем"; off = true;
+      } else if (st.state === "unknown") {   // the card is already here while the bot answers, so nothing jumps in later
+        text = "Смотрим, доступна ли тряска…"; button = "⏳ Проверяем…"; off = true;
       } else if (st.state === "blocked") {
         text = st.error || ""; button = "";
       } else if (st.state === "offline") {
@@ -1186,9 +1201,20 @@
       go.classList.toggle("hidden", !button);
       go.disabled = off || busy || locked;
     }
-    async function refresh() {
+    let seq = 0, tries = 0, retryT = 0;
+    const caseOpen = () => !document.hidden && !$("tab-case").classList.contains("hidden") && !run;
+    async function check() {
       if (!(live && PHONE)) return;
+      const my = ++seq;
+      clearTimeout(retryT);
+      if (st.state === "unknown") paint();   // the card shows up at once as «Проверяем…», not after the bot's answer
       const res = await call("state");
+      if (my !== seq) return;   // a newer check is already running: this answer is old
+      if (res.net) {
+        if (tries < 3) { retryT = setTimeout(check, 1500 * 2 ** tries++); return; }   // no connection: ask again quietly first
+      } else {
+        tries = 0;
+      }
       st = res.state ? res : { state: "offline", error: res.error || "" };
       stAt = Date.now();
       note = "";
@@ -1198,8 +1224,12 @@
         timer = setInterval(() => {
           if (st.left - (Date.now() - stAt) / 1000 <= 0) refresh(); else paint();
         }, 30000);
+      } else if (st.state === "offline" && res.net) {
+        // still no connection: keep trying while the case is on screen, so it heals without reloading the page
+        retryT = setTimeout(() => { if (caseOpen()) check(); }, 20000);
       }
     }
+    function refresh() { tries = 0; return check(); }
 
     // ---- the stage ----
     const STAGES = [[.25, "Разогреваем суперкейс…"], [.5, "Энергия растёт! 🔥"], [.75, "Ещё немного, не останавливайся!"], [1.01, "Почти готово!!!"]];
@@ -1380,6 +1410,7 @@
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden && !$("tab-case").classList.contains("hidden") && !run) refresh();
     });
+    window.addEventListener("online", () => { if (caseOpen()) refresh(); });
 
     return { refresh, lock(v) { locked = v; paint(); } };
   })();
@@ -1447,26 +1478,47 @@
       track.scrollLeft = keep;
       tickAgo();
     }
+    // The last strip is kept on the phone: the next open shows it at once and the fresh one replaces it a moment later.
+    const SAVED = "feed.v1";
+    let fails = 0, retryTimer = 0;
+    function restore() {
+      if (list.length) return;
+      try {
+        const s = JSON.parse(localStorage.getItem(SAVED) || "null");
+        if (s && Array.isArray(s.items) && s.items.length && Date.now() - s.at < 864e5) { list = s.items; baseAt = s.at; render(); }
+      } catch (e) { /* storage can be unavailable or hold junk: just wait for the bot */ }
+    }
+    function save() {
+      try { localStorage.setItem(SAVED, JSON.stringify({ at: baseAt, items: list })); } catch (e) { /* ignore */ }
+    }
     async function load() {
       if (busy || Date.now() < holdUntil) return;
       busy = true;
+      let ok = false;
       try {
-        const r = await fetch(API.replace(/\/$/, "") + "/api/case/feed", {
-          headers: { "ngrok-skip-browser-warning": "1" }, cache: "no-store",
-        });
-        const data = await r.json();
-        if (Array.isArray(data.items) && Date.now() >= holdUntil) { list = data.items; baseAt = Date.now(); render(); }
-      } catch (e) { /* no connection: the strip stays as it was, or stays hidden */ }
+        // 8 s at most, so a hung request can never keep `busy` set (that used to stop the strip for good)
+        const data = await apiJSON("/api/case/feed", { headers: { "ngrok-skip-browser-warning": "1" }, cache: "no-store" }, 8000);
+        if (Array.isArray(data.items)) {
+          ok = true;
+          if (Date.now() >= holdUntil) { list = data.items; baseAt = Date.now(); render(); save(); }
+        }
+      } catch (e) { /* no connection: the strip stays as it was (or as it was saved) */ }
       busy = false;
+      clearTimeout(retryTimer);
+      if (ok) fails = 0;
+      else if (pollTimer) retryTimer = setTimeout(load, Math.min(1500 * 2 ** fails++, 12000));   // 1.5 s, 3 s, 6 s, then every 12 s
     }
-    function stop() { clearInterval(pollTimer); clearInterval(tickTimer); }
+    function stop() { clearInterval(pollTimer); clearInterval(tickTimer); clearTimeout(retryTimer); pollTimer = 0; }
     function start() {
       stop();
+      fails = 0;
+      restore();
       load();
       pollTimer = setInterval(load, 15000);
       tickTimer = setInterval(tickAgo, 10000);
     }
     function hold(ms) { holdUntil = Date.now() + ms; setTimeout(load, ms + 300); }
+    window.addEventListener("online", () => { if (pollTimer) { fails = 0; load(); } });
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) stop();
       else if (!$("tab-case").classList.contains("hidden")) start();
