@@ -838,7 +838,18 @@
   // The page asks the bot directly (through the ngrok tunnel) and the strip stops on the prize here.
   // Telegram's signed initData tells the bot who is spinning; a page opened without it (from an old
   // keyboard button) sends the player to the bot for a button that has it.
-  const API = params.get("api") || "https://posh-cauterize-buffing.ngrok-free.dev";
+  // The address of the bot's API. The bot puts its own tunnel address into the page link (?api=...), but only
+  // addresses of our own kinds are accepted: a doctored link must not make the page send the player's signed
+  // data to somebody else's server.
+  const DEFAULT_API = "https://posh-cauterize-buffing.ngrok-free.dev";
+  const API_HOSTS = [/\.ngrok-free\.(dev|app)$/, /\.ngrok\.(app|io|dev)$/, /\.duckdns\.org$/];   // add your own domain here if you get one
+  const API = (() => {
+    try {
+      const u = new URL(params.get("api") || DEFAULT_API);
+      if (u.protocol === "https:" && !u.username && !u.password && API_HOSTS.some((re) => re.test(u.hostname))) return u.origin;
+    } catch (e) { /* not an address: use the default */ }
+    return DEFAULT_API;
+  })();
   const live = Boolean(inTelegram && tg.initData);
 
   // Every read from the bot goes through here. timeoutMs > 0 aborts a request that hangs (the tunnel is reconnecting,
