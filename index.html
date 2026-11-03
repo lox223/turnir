@@ -261,6 +261,43 @@
   @media (prefers-reduced-motion: reduce) {
     .sk-stars, .sk-rays, .sk-card::before, .sk-icon, .sk-phone, .sk-pop-emoji { animation: none; }
   }
+
+  /* ---- live draw overlay ---- */
+  #live { position: fixed; inset: 0; z-index: 2000; overflow: auto; color: #f2f5f8; padding: 12px 12px 28px;
+          background: radial-gradient(1000px 500px at 50% -10%, #23324a, #0c121b); font: 15px/1.4 -apple-system, "Segoe UI", Roboto, sans-serif; }
+  #live.hidden, #live-pill.hidden { display: none !important; }
+  .lv-top { display: flex; justify-content: space-between; align-items: center; }
+  .lv-badge { font-weight: 800; letter-spacing: .06em; font-size: 13px; color: #ff5c5c; display: flex; align-items: center; gap: 7px; }
+  .lv-badge i { width: 9px; height: 9px; border-radius: 50%; background: #ff3b3b; animation: lvblink 1.1s infinite; }
+  @keyframes lvblink { 50% { opacity: .25; } }
+  #lv-close { background: #2a3a52; color: #cfdae6; border: 0; border-radius: 10px; padding: 6px 12px; font: 600 13px inherit; }
+  #lv-title { font-size: 21px; font-weight: 800; margin: 8px 0 2px; text-align: center; }
+  #lv-prize { color: #ffd45a; font-weight: 700; text-align: center; margin-bottom: 6px; }
+  #lv-status { text-align: center; font-size: 34px; font-weight: 800; font-variant-numeric: tabular-nums; min-height: 44px; }
+  #lv-status small { display: block; font-size: 12px; font-weight: 500; color: #8b9aab; letter-spacing: .06em; text-transform: uppercase; }
+  .lv-bar { height: 5px; background: #1f2f42; border-radius: 99px; overflow: hidden; margin: 6px 0 10px; }
+  .lv-bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #f5a623, #ffd45a); }
+  .lv-cap { font-size: 12px; color: #8b9aab; margin: 8px 2px 3px; font-weight: 600; }
+  .lv-win { position: relative; height: 124px; overflow: hidden; border-radius: 14px; background: #0e1620;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,.06), inset 0 10px 22px rgba(0,0,0,.4); }
+  .lv-win::before, .lv-win::after { content: ""; position: absolute; top: 0; bottom: 0; width: 50px; z-index: 3; pointer-events: none; }
+  .lv-win::before { left: 0; background: linear-gradient(90deg, #0e1620, transparent); }
+  .lv-win::after { right: 0; background: linear-gradient(-90deg, #0e1620, transparent); }
+  .lv-cards { position: absolute; inset: 0; }
+  .lv-card { position: absolute; left: 0; top: 8px; width: 96px; height: 108px; border-radius: 11px; background: #223244; border-bottom: 3px solid var(--rc, #5b7aa0);
+             padding: 8px 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; will-change: transform; transition: opacity .5s; }
+  .lv-card .av { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 16px; color: #fff; }
+  .lv-card .nm { font-weight: 700; font-size: 13px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .lv-card .tk { font-size: 11px; color: #8b9aab; }
+  .lv-win.done .lv-card:not(.win) { opacity: .28; }
+  .lv-card.win { z-index: 2; box-shadow: 0 0 0 2px #ffd45a inset, 0 0 22px rgba(255,200,70,.7); }
+  .lv-marker { position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; margin-left: -1px; z-index: 4; pointer-events: none;
+               background: linear-gradient(180deg, #ffe08a, #e4ae39 50%, #ffe08a); box-shadow: 0 0 12px rgba(255,200,70,.9); }
+  #lv-now { text-align: center; color: #cfdae6; min-height: 22px; margin-top: 8px; font-size: 14px; }
+  #lv-res { margin-top: 12px; background: linear-gradient(180deg, #2a2a1c, #1b2735); border: 1px solid #6b5a22; border-radius: 14px; padding: 12px; }
+  #lv-res .row { padding: 5px 0; } #lv-res b { color: #ffd45a; }
+  #lv-proof { margin-top: 8px; font-size: 11px; color: #8b9aab; word-break: break-all; }
+  #live-pill { position: fixed; right: 12px; bottom: 14px; z-index: 1999; background: #e0352b; color: #fff; border: 0; border-radius: 999px; padding: 10px 16px; font: 700 14px inherit; box-shadow: 0 6px 18px rgba(0,0,0,.4); }
 </style>
 </head>
 <body>
@@ -343,6 +380,17 @@
     </div>
   </div>
 </div>
+<div id="live" class="hidden">
+  <div class="lv-top"><div class="lv-badge"><i></i>ПРЯМОЙ ЭФИР</div><button type="button" id="lv-close">✕ Скрыть</button></div>
+  <div id="lv-title">🏆 Итоги розыгрыша</div>
+  <div id="lv-prize"></div>
+  <div id="lv-status"><small>подключаемся</small>—</div>
+  <div class="lv-bar"><i id="lv-bar"></i></div>
+  <div id="lv-reels"></div>
+  <div id="lv-now">&nbsp;</div>
+  <div id="lv-res" class="hidden"></div>
+</div>
+<button type="button" id="live-pill" class="hidden">🔴 Эфир</button>
 <main>
   <nav class="tabs">
     <button type="button" data-tab="tourney" class="on">🏟 Турнир</button>
@@ -379,7 +427,7 @@
       <ol>
         <li>Крутить можно <b>1 раз в сутки</b>, если ты участвуешь в текущем розыгрыше.</li>
         <li>Скины выпадают подписчикам канала, которые в боте <b>от 2 дней</b>. До этого вместо скина — билеты.</li>
-        <li>Скин можно выиграть <b>раз в неделю</b>, AK-47 — один в неделю на весь бот. Если дневной фонд скинов
+        <li>Скин может выпасть <b>при каждой прокрутке</b>, AK-47 — до трёх в неделю на весь бот. Если дневной фонд скинов
           закончился, до завтра падают билеты. Бот всегда пишет, почему.</li>
         <li>🌀 <b>Раз в 2 дня</b> на телефоне можно потрясти его ~10 секунд и получить бонусное открытие: тот же кейс
           с теми же правилами, а обычный на сегодня остаётся.
@@ -1537,6 +1585,167 @@
     return { start, stop, hold };
   })();
 
+  // ---- Live draw: the bot owns the schedule (GET /api/live); every screen positions the reels from the SERVER clock
+  // (offset measured with the lowest-latency answer), so everybody sees the same picture at the same moment.
+  const LIVE = (() => {
+    const CARD_W = 104, BODY_W = 96;
+    let offset = 0, samples = [], st = null, reels = [], timer = 0, tick = 0, revealAt = 0, revealFor = 0;
+    let dismissed = 0, finished = false, built = "";
+    const serverNow = () => Date.now() + offset;
+    const fmt = (ms) => { const x = Math.max(0, Math.ceil(ms / 1000)); return String(Math.floor(x / 60)).padStart(2, "0") + ":" + String(x % 60).padStart(2, "0"); };
+    const h32 = (a, b) => { let h = (a ^ Math.imul(b, 0x9e3779b1)) >>> 0; h = Math.imul(h ^ (h >>> 16), 0x85ebca6b); h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+    const hue = (name) => [...name].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) >>> 0, 7) % 360;
+    const initials = (n) => n.replace(/[^\p{L}\p{N}]/gu, "").slice(0, 2).toUpperCase() || "?";
+    const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    const sha = async (text) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)))].map((x) => x.toString(16).padStart(2, "0")).join("");
+
+    // ----- reels (same maths for everyone: the strip comes from the seed, the position from the server time)
+    function pickIdx(S, r) { const x = r * S.total; let lo = 0, hi = S.cum.length - 1; while (lo < hi) { const m = (lo + hi) >> 1; if (S.cum[m] > x) hi = m; else lo = m + 1; } return lo; }
+    function cardIdx(S, i) {
+      if (i === S.WIN) return S.w;
+      const n = S.n.length, raw = (j) => (j === S.WIN ? S.w : pickIdx(S, h32(S.ss, j >>> 0)));
+      const g = Math.floor(i / 8) * 8; let prev = raw(g - 1), k = prev;
+      for (let j = g; j <= i; j++) {
+        k = raw(j);
+        if (j !== S.WIN && n > 2) for (let guard = 0; guard < n && (k === prev || (k === S.w && Math.abs(j - S.WIN) <= 3)); guard++) k = (k + 1) % n;
+        prev = k;
+      }
+      return k;
+    }
+    const P0 = () => 3.5 * CARD_W;
+    const P1 = (S) => S.WIN * CARD_W + CARD_W / 2 + S.jit * CARD_W;
+    const posAt = (S, t) => { const x = Math.min(1, Math.max(0, t / st.spin)); return P0() + (P1(S) - P0()) * (1 - Math.pow(1 - x, 2.5)); };
+
+    function buildReels() {
+      const R = st.reveal, cum = []; let total = 0;
+      for (const [, t] of R.players) { total += t; cum.push(total); }
+      const WIN = Math.round(Math.min(420, Math.max(40, (st.spin / 1000) * 3.5)));
+      reels = R.winners.map((w, r) => {
+        const ss = (R.seed + Math.imul(r + 1, 0x9e3779b1)) >>> 0;
+        return { n: R.players, cum, total, ss, w, WIN, jit: (h32(ss, 7777) * 2 - 1) * 0.38, pool: [], win: null };
+      });
+      const box = $("lv-reels"); box.innerHTML = "";
+      reels.forEach((S, r) => {
+        const el = document.createElement("div");
+        el.innerHTML = '<div class="lv-cap">🏆 Место ' + (r + 1) + '</div><div class="lv-win"><div class="lv-cards"></div><div class="lv-marker"></div></div>';
+        box.appendChild(el); S.win = el.querySelector(".lv-win"); S.cards = el.querySelector(".lv-cards");
+      });
+      initPools(); built = String(st.start);
+    }
+    function initPools() {
+      reels.forEach((S) => {
+        const w = S.win.clientWidth || 320, n = Math.ceil(w / CARD_W) + 4;
+        S.cards.innerHTML = ""; S.pool = [];
+        for (let k = 0; k < n; k++) {
+          const el = document.createElement("div"); el.className = "lv-card";
+          el.innerHTML = '<div class="av"></div><div class="nm"></div><div class="tk"></div>';
+          S.cards.appendChild(el); S.pool.push({ el, i: null, av: el.children[0], nm: el.children[1], tk: el.children[2] });
+        }
+      });
+    }
+    function paint(S, p, win) {
+      const center = (S.win.clientWidth || 320) / 2, first = Math.floor((p - center) / CARD_W) - 1;
+      S.pool.forEach((c, k) => {
+        const i = first + k;
+        if (c.i !== i) {
+          c.i = i; const [name, t] = S.n[cardIdx(S, i)];
+          c.av.textContent = initials(name); c.av.style.background = `linear-gradient(135deg, hsl(${hue(name)} 70% 56%), hsl(${(hue(name) + 45) % 360} 70% 38%))`;
+          c.nm.textContent = name; c.tk.textContent = t + " бил."; c.el.style.setProperty("--rc", `hsl(${hue(name)} 60% 55%)`);
+        }
+        c.el.classList.toggle("win", win && i === S.WIN);
+        c.el.style.transform = `translate3d(${i * CARD_W + CARD_W / 2 - p + center - BODY_W / 2}px,0,0)`;
+      });
+    }
+
+    // ----- screen
+    function setStatus(label, value) { $("lv-status").innerHTML = "<small>" + label + "</small>" + value; }
+    function hide() { $("live").classList.add("hidden"); $("live-pill").classList.add("hidden"); }
+    async function showResult() {
+      const R = st.reveal; if (!R) return;
+      finished = true;
+      $("lv-res").innerHTML = R.winners.map((w, r) => '<div class="row">🏆 <b>' + (r + 1) + ' место</b> — ' + esc(R.players[w][0]) + ' · билетов ' + R.players[w][1] + '<br>🎁 ' + esc(st.prize) + '</div>').join("") + '<div id="lv-proof"></div>';
+      $("lv-res").classList.remove("hidden");
+      try { tg.HapticFeedback.notificationOccurred("success"); } catch (e) { /* not in Telegram */ }
+      if (st.proof) {
+        try {
+          const lh = await sha(R.players.map(([n, t]) => n + ":" + t).join("\n"));
+          const ok = lh === st.proof.listHash && (await sha(st.proof.salt + "|" + R.winners.map((w) => R.players[w][0]).join("|") + "|" + lh)) === st.commit;
+          $("lv-proof").innerHTML = "Хеш результата, опубликованный до старта: " + st.commit + "<br>Проверка: " + (ok ? "✓ совпадает" : "✗ не совпадает");
+        } catch (e) { /* no crypto: skip the check */ }
+      }
+    }
+    function frame() {
+      tick = 0;
+      if (!st) return;
+      const now = serverNow(), t = now - st.start;
+      if (now >= st.end) { st = null; reels = []; finished = false; built = ""; hide(); return; }
+      const open = dismissed !== st.start;
+      $("live").classList.toggle("hidden", !open); $("live-pill").classList.toggle("hidden", open);
+      $("lv-prize").textContent = "🎁 " + st.prize;
+      if (open) {
+        if (st.reveal && built !== String(st.start)) buildReels();
+        if (t < 0) {
+          setStatus("прокрутка начнётся через", fmt(-t)); $("lv-bar").style.width = "0"; $("lv-now").textContent = st.reveal ? "" : "Участники и линейки откроются прямо перед стартом";
+          reels.forEach((S) => paint(S, P0(), false));
+        } else if (t < st.spin) {
+          if (!reels.length) setStatus("подключаемся к эфиру", "…");
+          else { setStatus("до остановки", fmt(st.spin - t)); $("lv-bar").style.width = (t / st.spin * 100) + "%"; reels.forEach((S) => paint(S, posAt(S, t), false)); }
+          $("lv-now").textContent = "";
+        } else if (reels.length) {
+          setStatus("победители", "🏆"); $("lv-bar").style.width = "100%"; $("lv-now").textContent = "";
+          reels.forEach((S) => { paint(S, P1(S), true); S.win.classList.add("done"); });
+          if (!finished) showResult();
+        }
+      }
+      tick = t >= 0 && t < st.spin ? requestAnimationFrame(frame) : setTimeout(() => { tick = 0; frame(); }, 250);
+    }
+    function kick() { if (tick) { cancelAnimationFrame(tick); clearTimeout(tick); tick = 0; } frame(); }
+
+    // ----- talking to the bot
+    function apply(d) {
+      if (d.phase === "idle") { st = null; reels = []; finished = false; built = ""; hide(); return; }
+      if (!st || st.start !== d.start) { st = d; reels = []; finished = false; built = ""; revealAt = 0; }
+      else st = { ...st, ...d, reveal: d.reveal || st.reveal, proof: d.proof || st.proof };
+      kick();
+    }
+    async function load() {
+      const w0 = Date.now(), p0 = performance.now();
+      let d;
+      try { d = await apiJSON("/api/live", { headers: { "ngrok-skip-browser-warning": "1" }, cache: "no-store" }, 6000); } catch (e) { return false; }
+      if (!d || typeof d.now !== "number") return false;
+      const rtt = performance.now() - p0;
+      samples.push({ rtt, off: d.now - (w0 + rtt / 2), at: performance.now() });
+      samples = samples.filter((x) => performance.now() - x.at < 180000).slice(-12);
+      offset = samples.reduce((b, x) => (x.rtt < b.rtt ? x : b)).off;   // the fastest answer is the most precise one
+      apply(d);
+      return true;
+    }
+    function schedule() {
+      clearTimeout(timer);
+      let ms = 20000;
+      if (st) {
+        const left = st.start - serverNow();
+        if (st.reveal) ms = 12000;
+        else if (left > 62000) ms = 8000;
+        else {   // the reels are published 60 s before the start; every viewer fetches them at its own random moment
+          if (!revealAt) revealAt = st.start - (8000 + Math.random() * 45000);
+          const wait = revealAt - serverNow();
+          ms = wait > 0 ? wait : 1200 + Math.random() * 1200;
+        }
+      }
+      timer = setTimeout(async () => { await load(); schedule(); }, ms + Math.random() * 800);
+    }
+    function start() {
+      load().then(schedule);
+      $("lv-close").addEventListener("click", () => { if (st) { dismissed = st.start; kick(); } });
+      $("live-pill").addEventListener("click", () => { dismissed = 0; kick(); });
+      document.addEventListener("visibilitychange", () => { if (!document.hidden) { load().then(schedule); } });
+      window.addEventListener("resize", () => { if (reels.length) { initPools(); kick(); } });
+    }
+    window.__live = { now: serverNow, offset: () => offset, pos: (r) => (st && reels[r] ? posAt(reels[r], serverNow() - st.start) : null) };
+    return { start };
+  })();
+
   function showTab(name) {
     document.querySelectorAll(".tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === name));
     $("tab-case").classList.toggle("hidden", name !== "case");
@@ -1566,6 +1775,7 @@
   const roll = location.hash.match(/^#roll=(\w+)/);
   showTab(roll || location.hash === "#case" ? "case" : "tourney");
   if (roll) replay(roll[1]);
+  LIVE.start();
 </script>
 </body>
 </html>
