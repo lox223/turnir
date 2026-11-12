@@ -762,11 +762,12 @@ cv.addEventListener("pointercancel", release);
 let server = null;            // the bot's last answer, or null
 let level = 0;
 
-function unlocked() {
-  // In a giveaway the bot's count rules (the tickets are for a run made in it); otherwise the browser remembers.
-  const done = server && server.giveaway && !server.claimed ? server.done : Math.max(parseInt(store.get("cb_done", "0"), 10) || 0, server ? server.done : 0);
-  return Math.min(LEVELS.length, done + 1);
+// Levels done in a row. The bot's count rules whenever it answers (a new giveaway starts the run over);
+// the browser's own count is only for playing outside Telegram.
+function doneCount() {
+  return server ? server.done : Math.min(LEVELS.length, parseInt(store.get("cb_done", "0"), 10) || 0);
 }
+function unlocked() { return Math.min(LEVELS.length, doneCount() + 1); }
 
 function rewardLine() {
   if (!signed) return "🎟 Билеты за прохождение начисляются, если открыть игру из бота. Сейчас можно играть просто так.";
@@ -814,15 +815,21 @@ function startLevel(i) {
 async function onWin() {
   AUDIO.play("win");
   if (inTelegram) tg.HapticFeedback.notificationOccurred("success");
-  store.set("cb_done", String(Math.max(parseInt(store.get("cb_done", "0"), 10) || 0, level + 1)));
+  // The run grows only in order: level 3 played on its own (again, after the run) is not "everything passed".
+  const before = doneCount(), inOrder = before === level;
+  if (inOrder) {
+    store.set("cb_done", String(level + 1));
+    if (server) server.done = level + 1;             // until the bot's answer comes; its count replaces this one
+  }
   const left = game.birdsLeft, last = level === LEVELS.length - 1;
   const sent = api("level", level + 1);
-  if (!last) {
+  if (!last || !inOrder) {
     sent.then((r) => { if (r) server = r; });
     show(`<div class="big">🎉</div><h1>Уровень ${level + 1} пройден!</h1>
       <p class="center">${left ? `В запасе осталось цыплят: <b>${left}</b>.` : "Последним цыплёнком — красиво!"}</p>
-      <button class="go" id="next">Дальше ▶</button>`);
-    $("next").addEventListener("click", () => startLevel(level + 1));
+      ${last ? `<button class="go" id="menu">К уровням</button>` : `<button class="go" id="next">Дальше ▶</button>`}`);
+    if (last) $("menu").addEventListener("click", welcome);
+    else $("next").addEventListener("click", () => startLevel(level + 1));
     return;
   }
   show(`<div class="big">🏆</div><h1>Все уровни пройдены!</h1><div class="reward" id="prize">Сообщаю боту…</div>
