@@ -64,6 +64,10 @@
   .tabs button { flex: 1; padding: 10px; border: 0; border-radius: 9px; background: transparent; color: var(--hint);
                  font-size: 15px; font-weight: 600; }
   .tabs button.on { background: var(--accent); color: var(--accent-text); }
+  .game-link { display: block; margin: -6px 0 16px; padding: 12px 14px; border-radius: 12px; text-align: center;
+               background: linear-gradient(90deg, #ffcf33, #ffb300); color: #3a2600; font-weight: 700; font-size: 15px;
+               text-decoration: none; }
+  .game-link span { display: block; font-weight: 500; font-size: 12px; opacity: .8; }
   /* Case cards look like the market's: dark card, skin, wear / float, price. */
   .items { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-bottom: 12px; }
   .item { position: relative; isolation: isolate; background: #312f3d; border-radius: 12px; padding: 0 10px 10px;
@@ -396,6 +400,8 @@
     <button type="button" data-tab="tourney" class="on">🏟 Турнир</button>
     <button type="button" data-tab="case">💎 Кейс</button>
   </nav>
+  <!-- The slingshot game lives on its own page (game.html); the query goes along so it keeps the bot's address. -->
+  <a id="game-link" class="game-link" href="game.html">🐥 Играть в «Цыпа-бум» <span>+3 билета за прохождение</span></a>
 
   <section id="tab-case" class="hidden">
     <button type="button" id="snd" class="snd" aria-label="Звук" aria-pressed="true">🔊</button>
@@ -1764,6 +1770,7 @@
     if (name === "case") { SFX.load(); FEED.start(); SHAKE.refresh(); } else { FEED.stop(); }
   }
   document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
+  $("game-link").href = "game.html" + location.search;
 
   if (inTelegram) {
     tg.ready();

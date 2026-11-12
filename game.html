@@ -1,0 +1,875 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Цыпа-бум · YooSkins</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #2b2008; color: #4a3200;
+               font: 16px/1.4 -apple-system, "Segoe UI", Roboto, sans-serif; overscroll-behavior: none; }
+  #stage { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  #wrap { position: relative; }
+  canvas { display: block; touch-action: none; }
+  #hud { position: absolute; top: 8px; left: 8px; right: 8px; display: flex; gap: 6px; align-items: center;
+         pointer-events: none; }
+  #hud > * { pointer-events: auto; }
+  .pill { background: rgba(255, 246, 214, .88); border-radius: 999px; padding: 6px 12px; font-weight: 700; font-size: 14px;
+          box-shadow: 0 1px 0 rgba(120, 80, 0, .25); }
+  .grow { flex: 1; }
+  .ibtn { width: 36px; height: 36px; border: 0; border-radius: 50%; background: rgba(255, 246, 214, .88); font-size: 17px;
+          color: #4a3200; box-shadow: 0 1px 0 rgba(120, 80, 0, .25); padding: 0; }
+  #modal { position: fixed; inset: 0; background: rgba(43, 32, 8, .62); display: flex; align-items: center;
+           justify-content: center; padding: 16px; z-index: 5; }
+  #modal.hidden { display: none; }
+  .card { width: 100%; max-width: 380px; max-height: 100%; overflow: auto; background: #fff6d6; border-radius: 20px;
+          padding: 20px 18px 16px; box-shadow: 0 10px 40px rgba(0, 0, 0, .35); border: 3px solid #ffcf33; }
+  .card h1 { margin: 0 0 6px; font-size: 24px; text-align: center; }
+  .card p { margin: 8px 0; font-size: 15px; }
+  .card ol { margin: 8px 0; padding-left: 22px; font-size: 14.5px; }
+  .card li { margin-bottom: 5px; }
+  .reward { background: #ffe58a; border-radius: 12px; padding: 10px 12px; font-size: 14.5px; margin: 12px 0; }
+  .levels { display: flex; gap: 8px; margin: 12px 0; }
+  .levels button { flex: 1; padding: 10px 4px; border-radius: 12px; border: 2px solid #e2b12a; background: #fff; color: #4a3200;
+                   font-size: 13px; font-weight: 700; }
+  .levels button.on { background: #ffcf33; }
+  .levels button:disabled { opacity: .45; }
+  .go { width: 100%; padding: 14px; border: 0; border-radius: 14px; background: #ffb300; color: #3a2600; font-size: 17px;
+        font-weight: 800; box-shadow: 0 3px 0 #c98600; margin-top: 4px; }
+  .go:active { transform: translateY(2px); box-shadow: 0 1px 0 #c98600; }
+  .ghost { width: 100%; padding: 11px; border: 0; background: transparent; color: #8a6200; font-size: 15px; font-weight: 600;
+           margin-top: 6px; }
+  .big { font-size: 46px; text-align: center; line-height: 1.1; }
+  .center { text-align: center; }
+</style>
+</head>
+<body>
+<div id="stage"><div id="wrap">
+  <canvas id="cv"></canvas>
+  <div id="hud">
+    <button class="ibtn" id="back" aria-label="Назад">←</button>
+    <div class="pill" id="lvl">Уровень 1/3</div>
+    <div class="grow"></div>
+    <div class="pill" id="foes">😈 0</div>
+    <button class="ibtn" id="restart" aria-label="Заново">↻</button>
+    <button class="ibtn" id="snd" aria-label="Звук">🔈</button>
+  </div>
+</div></div>
+<div id="modal"><div class="card" id="card"></div></div>
+
+<script>
+"use strict";
+// ============================================================================================
+// «Цыпа-бум»: a slingshot game. Yellow chicks against red pests on three levels.
+// The physics is our own (boxes and circles, sequential impulses with warm starting), so the page
+// needs no library. Game is pure logic; the renderer below only reads it.
+// ============================================================================================
+
+// ---------- world ----------
+const W = 10, H = 13.4, GROUND = 12;                 // world units; the ground's top is y = GROUND
+const GRAV = 12, DT = 1 / 120, ITER = 8, SLOP = 0.01, BIAS = 0.2;
+const ANCHOR = { x: 1.9, y: GROUND - 1.75 }, MAX_PULL = 1.5, V_MAX = 13.5;
+const MAT = {
+  wood:  { hp: 5,   dens: 2.2, slow: 0.6 },          // slow: speed a chick keeps after smashing through
+  stone: { hp: 14,  dens: 5,   slow: 0.35 },
+  glass: { hp: 1.6, dens: 1.6, slow: 0.85 },
+};
+const BIRD = { r: 0.3, m: 1.5 }, FOE = { r: 0.3, m: 0.6, hp: 2.6 };
+const HIT_MIN = 1.2;                                 // approach speed below this never hurts
+
+// ---------- physics ----------
+const NONE = [];
+let bodyIds = 0;
+function makeBody(o) {
+  const b = Object.assign({ id: ++bodyIds, x: 0, y: 0, ang: 0, vx: 0, vy: 0, av: 0, m: 0, fr: 0.6, hp: Infinity, dead: false }, o);
+  let inertia;
+  if (b.r) { b.rad = b.r; inertia = 0.5 * b.m * b.r * b.r; }
+  else { b.hw = b.w / 2; b.hh = b.h / 2; b.rad = Math.hypot(b.hw, b.hh); inertia = b.m * (b.w * b.w + b.h * b.h) / 12; }
+  b.im = b.m > 0 ? 1 / b.m : 0;                      // m = 0: static
+  b.ii = b.im ? 1 / inertia : 0;
+  return b;
+}
+
+// Contacts: {x, y, nx, ny (from A to B), sep, id}.
+function circleCircle(A, B) {
+  let dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy);
+  if (d >= A.r + B.r) return NONE;
+  if (d < 1e-6) { dx = 0; dy = -1; d = 1; }
+  const nx = dx / d, ny = dy / d;
+  return [{ x: A.x + nx * A.r, y: A.y + ny * A.r, nx, ny, sep: d - A.r - B.r, id: 0, Pn: 0, Pt: 0 }];
+}
+
+function boxCircle(A, B) {
+  const c = Math.cos(A.ang), s = Math.sin(A.ang), dx = B.x - A.x, dy = B.y - A.y;
+  const lx = c * dx + s * dy, ly = -s * dx + c * dy;
+  let qx = Math.max(-A.hw, Math.min(A.hw, lx)), qy = Math.max(-A.hh, Math.min(A.hh, ly));
+  let nx, ny, sep;
+  if (qx === lx && qy === ly) {                      // the centre is inside the box: out through the nearest face
+    const ex = A.hw - Math.abs(lx), ey = A.hh - Math.abs(ly);
+    if (ex < ey) { nx = lx < 0 ? -1 : 1; ny = 0; qx = nx * A.hw; sep = -ex - B.r; }
+    else { nx = 0; ny = ly < 0 ? -1 : 1; qy = ny * A.hh; sep = -ey - B.r; }
+  } else {
+    const ex = lx - qx, ey = ly - qy, d = Math.hypot(ex, ey);
+    if (d > B.r) return NONE;
+    nx = ex / d; ny = ey / d; sep = d - B.r;
+  }
+  return [{ x: A.x + c * qx - s * qy, y: A.y + s * qx + c * qy, nx: c * nx - s * ny, ny: s * nx + c * ny, sep, id: 0, Pn: 0, Pt: 0 }];
+}
+
+function clip(pts, nx, ny, offset, tag) {
+  const out = [], d0 = nx * pts[0].x + ny * pts[0].y - offset, d1 = nx * pts[1].x + ny * pts[1].y - offset;
+  if (d0 <= 0) out.push(pts[0]);
+  if (d1 <= 0) out.push(pts[1]);
+  if (d0 * d1 < 0) {
+    const t = d0 / (d0 - d1);
+    out.push({ x: pts[0].x + t * (pts[1].x - pts[0].x), y: pts[0].y + t * (pts[1].y - pts[0].y), id: tag * 10 + (d0 > 0 ? pts[0].id : pts[1].id) });
+  }
+  return out;
+}
+
+// Box against box: the axis of least penetration, then the incident edge clipped to the reference face.
+function boxBox(A, B) {
+  const ca = Math.cos(A.ang), sa = Math.sin(A.ang), cb = Math.cos(B.ang), sb = Math.sin(B.ang);
+  const dx = B.x - A.x, dy = B.y - A.y;
+  const dAx = ca * dx + sa * dy, dAy = -sa * dx + ca * dy, dBx = cb * dx + sb * dy, dBy = -sb * dx + cb * dy;
+  const c1 = Math.abs(ca * cb + sa * sb), c2 = Math.abs(sa * cb - ca * sb);
+  const fAx = Math.abs(dAx) - A.hw - (c1 * B.hw + c2 * B.hh), fAy = Math.abs(dAy) - A.hh - (c2 * B.hw + c1 * B.hh);
+  if (fAx > 0 || fAy > 0) return NONE;
+  const fBx = Math.abs(dBx) - (c1 * A.hw + c2 * A.hh) - B.hw, fBy = Math.abs(dBy) - (c2 * A.hw + c1 * A.hh) - B.hh;
+  if (fBx > 0 || fBy > 0) return NONE;
+
+  let axis = 0, sep = fAx, nx = dAx > 0 ? ca : -ca, ny = dAx > 0 ? sa : -sa;
+  if (fAy > 0.95 * sep + 0.01 * A.hh) { axis = 1; sep = fAy; nx = dAy > 0 ? -sa : sa; ny = dAy > 0 ? ca : -ca; }
+  if (fBx > 0.95 * sep + 0.01 * B.hw) { axis = 2; sep = fBx; nx = dBx > 0 ? cb : -cb; ny = dBx > 0 ? sb : -sb; }
+  if (fBy > 0.95 * sep + 0.01 * B.hh) { axis = 3; sep = fBy; nx = dBy > 0 ? -sb : sb; ny = dBy > 0 ? cb : -cb; }
+
+  const ref = axis < 2 ? A : B, inc = axis < 2 ? B : A;
+  const fnx = axis < 2 ? nx : -nx, fny = axis < 2 ? ny : -ny;
+  const rc = Math.cos(ref.ang), rs = Math.sin(ref.ang);
+  let front, snx, sny, sideH;
+  if (axis % 2 === 0) { front = ref.x * fnx + ref.y * fny + ref.hw; snx = -rs; sny = rc; sideH = ref.hh; }
+  else { front = ref.x * fnx + ref.y * fny + ref.hh; snx = rc; sny = rs; sideH = ref.hw; }
+  const side = ref.x * snx + ref.y * sny;
+
+  // The incident edge: the face of the other box that looks at the reference face.
+  const ic = Math.cos(inc.ang), is = Math.sin(inc.ang);
+  const lnx = -(ic * fnx + is * fny), lny = -(-is * fnx + ic * fny);
+  let v;
+  if (Math.abs(lnx) > Math.abs(lny)) v = lnx > 0 ? [[inc.hw, -inc.hh, 0], [inc.hw, inc.hh, 1]] : [[-inc.hw, inc.hh, 2], [-inc.hw, -inc.hh, 3]];
+  else v = lny > 0 ? [[inc.hw, inc.hh, 1], [-inc.hw, inc.hh, 2]] : [[-inc.hw, -inc.hh, 3], [inc.hw, -inc.hh, 0]];
+  let pts = v.map(([px, py, id]) => ({ x: inc.x + ic * px - is * py, y: inc.y + is * px + ic * py, id }));
+  pts = clip(pts, -snx, -sny, -side + sideH, 1);
+  if (pts.length < 2) return NONE;
+  pts = clip(pts, snx, sny, side + sideH, 2);
+  if (pts.length < 2) return NONE;
+
+  const out = [];
+  for (const p of pts) {
+    const s = fnx * p.x + fny * p.y - front;
+    if (s <= 0) out.push({ x: p.x - s * fnx, y: p.y - s * fny, nx, ny, sep: s, id: axis * 100 + p.id, Pn: 0, Pt: 0 });
+  }
+  return out;
+}
+
+class World {
+  constructor() { this.bodies = []; this.arbs = new Map(); this.stamp = 0; }
+  add(b) { this.bodies.push(b); return b; }
+  remove(b) {
+    this.bodies = this.bodies.filter((x) => x !== b);
+    for (const [k, arb] of this.arbs) if (arb.a === b || arb.b === b) this.arbs.delete(k);
+  }
+
+  detect() {
+    this.stamp++;
+    const bs = this.bodies;
+    for (let i = 0; i < bs.length; i++) for (let j = i + 1; j < bs.length; j++) {
+      let a = bs[i], b = bs[j];
+      if (!a.im && !b.im) continue;
+      const dx = b.x - a.x, dy = b.y - a.y, rr = a.rad + b.rad;
+      if (dx * dx + dy * dy > rr * rr) continue;
+      if (a.r && !b.r) { const t = a; a = b; b = t; }                 // a box always goes first
+      const cs = a.r ? circleCircle(a, b) : b.r ? boxCircle(a, b) : boxBox(a, b);
+      if (!cs.length) continue;
+      const key = a.id < b.id ? a.id * 65536 + b.id : b.id * 65536 + a.id;
+      let arb = this.arbs.get(key);
+      if (!arb) { arb = { a, b, cs, fr: Math.sqrt(a.fr * b.fr) }; this.arbs.set(key, arb); }
+      else {
+        // Warm start: a contact that is still there keeps its impulses, which is what holds stacks still.
+        for (const c of cs) { const o = arb.cs.find((q) => q.id === c.id); if (o) { c.Pn = o.Pn; c.Pt = o.Pt; } }
+        arb.cs = cs;
+      }
+      arb.stamp = this.stamp;
+    }
+    for (const [k, arb] of this.arbs) if (arb.stamp !== this.stamp) this.arbs.delete(k);
+  }
+
+  // Approach speed of every touching pair, before the solver removes it: this is what damage is counted from.
+  impacts(cb) {
+    for (const arb of this.arbs.values()) {
+      const a = arb.a, b = arb.b;
+      let s = 0;
+      for (const c of arb.cs) {
+        const r1x = c.x - a.x, r1y = c.y - a.y, r2x = c.x - b.x, r2y = c.y - b.y;
+        const vn = (b.vx - b.av * r2y - a.vx + a.av * r1y) * c.nx + (b.vy + b.av * r2x - a.vy - a.av * r1x) * c.ny;
+        if (-vn > s) s = -vn;
+      }
+      if (s > HIT_MIN) cb(a, b, s);
+    }
+  }
+
+  solve() {
+    const inv = 1 / DT;
+    for (const b of this.bodies) if (b.im) { b.vy += GRAV * DT; b.av *= b.r ? 0.992 : 0.9995; }
+    for (const arb of this.arbs.values()) {
+      const a = arb.a, b = arb.b;
+      for (const c of arb.cs) {
+        const r1x = c.r1x = c.x - a.x, r1y = c.r1y = c.y - a.y, r2x = c.r2x = c.x - b.x, r2y = c.r2y = c.y - b.y;
+        const rn1 = r1x * c.nx + r1y * c.ny, rn2 = r2x * c.nx + r2y * c.ny;
+        c.mn = 1 / (a.im + b.im + a.ii * (r1x * r1x + r1y * r1y - rn1 * rn1) + b.ii * (r2x * r2x + r2y * r2y - rn2 * rn2));
+        const tx = c.ny, ty = -c.nx, rt1 = r1x * tx + r1y * ty, rt2 = r2x * tx + r2y * ty;
+        c.mt = 1 / (a.im + b.im + a.ii * (r1x * r1x + r1y * r1y - rt1 * rt1) + b.ii * (r2x * r2x + r2y * r2y - rt2 * rt2));
+        c.bias = -BIAS * inv * Math.min(0, c.sep + SLOP);
+        const px = c.Pn * c.nx + c.Pt * tx, py = c.Pn * c.ny + c.Pt * ty;
+        a.vx -= a.im * px; a.vy -= a.im * py; a.av -= a.ii * (r1x * py - r1y * px);
+        b.vx += b.im * px; b.vy += b.im * py; b.av += b.ii * (r2x * py - r2y * px);
+      }
+    }
+    for (let it = 0; it < ITER; it++) for (const arb of this.arbs.values()) {
+      const a = arb.a, b = arb.b;
+      for (const c of arb.cs) {
+        const { r1x, r1y, r2x, r2y, nx, ny } = c, tx = ny, ty = -nx;
+        let dvx = b.vx - b.av * r2y - a.vx + a.av * r1y, dvy = b.vy + b.av * r2x - a.vy - a.av * r1x;
+        let dPn = c.mn * (-(dvx * nx + dvy * ny) + c.bias);
+        const pn0 = c.Pn; c.Pn = Math.max(pn0 + dPn, 0); dPn = c.Pn - pn0;
+        let px = dPn * nx, py = dPn * ny;
+        a.vx -= a.im * px; a.vy -= a.im * py; a.av -= a.ii * (r1x * py - r1y * px);
+        b.vx += b.im * px; b.vy += b.im * py; b.av += b.ii * (r2x * py - r2y * px);
+        dvx = b.vx - b.av * r2y - a.vx + a.av * r1y; dvy = b.vy + b.av * r2x - a.vy - a.av * r1x;
+        let dPt = c.mt * -(dvx * tx + dvy * ty);
+        const maxPt = arb.fr * c.Pn, pt0 = c.Pt; c.Pt = Math.max(-maxPt, Math.min(maxPt, pt0 + dPt)); dPt = c.Pt - pt0;
+        px = dPt * tx; py = dPt * ty;
+        a.vx -= a.im * px; a.vy -= a.im * py; a.av -= a.ii * (r1x * py - r1y * px);
+        b.vx += b.im * px; b.vy += b.im * py; b.av += b.ii * (r2x * py - r2y * px);
+      }
+    }
+    for (const b of this.bodies) if (b.im) { b.x += b.vx * DT; b.y += b.vy * DT; b.ang += b.av * DT; }
+  }
+}
+
+// ---------- levels ----------
+// Heights are above the ground. P: a post standing at `base`, B: a beam lying at `base`, C: a cube.
+const P = (mat, x, base, h = 1.2) => [mat, x, base + h / 2, 0.24, h];
+const B = (mat, x, base, w) => [mat, x, base + 0.12, w, 0.24];
+const C = (mat, x, base, s = 0.5) => [mat, x, base + s / 2, s, s];
+// Tuned by playing them with simulate(): each can be won with two exact shots, and random shooting wins
+// about one try in a hundred or less. Changing a level? Check it the same way.
+const LEVELS = [
+  { name: "Вышка", birds: 3,
+    statics: [[4.4, 0, 0.5, 0.7], [8.7, 2.85, 1.6, 0.3]],              // x, bottom, width, height
+    blocks: [P("wood", 5.4, 0), P("wood", 6.6, 0), B("wood", 6.0, 1.2, 1.7),
+             P("stone", 5.5, 1.44), P("wood", 6.5, 1.44), B("wood", 6.0, 2.64, 1.5), C("stone", 6.0, 2.88),
+             P("wood", 8.2, 3.15)],
+    foes: [[6.0, 0], [6.0, 1.44], [8.95, 3.15]] },                     // x, height of the feet
+  { name: "Бункер", birds: 4,
+    statics: [[4.2, 0, 0.7, 1.2]],
+    blocks: [P("stone", 5.0, 0), P("stone", 6.4, 0), B("wood", 5.7, 1.2, 1.9),
+             P("stone", 5.2, 1.44), P("wood", 6.2, 1.44), B("wood", 5.7, 2.64, 1.5), C("stone", 5.7, 2.88),
+             P("glass", 8.0, 0), P("glass", 8.8, 0), B("wood", 8.4, 1.2, 1.2),
+             P("wood", 8.0, 1.44), P("wood", 8.8, 1.44), B("wood", 8.4, 2.64, 1.2), C("stone", 8.4, 2.88)],
+    foes: [[5.7, 0], [5.7, 1.44], [8.4, 0], [8.4, 1.44]] },
+  { name: "Крепость", birds: 4,
+    statics: [[8.9, 0, 2.2, 3.0], [7.95, 3.0, 0.3, 0.5], [6.0, 3.25, 1.8, 0.3], [6.8, 0, 0.3, 1.4]],
+    blocks: [P("stone", 8.55, 3.0), P("stone", 9.65, 3.0), B("wood", 9.1, 4.2, 1.5),
+             P("wood", 5.6, 0), P("wood", 6.4, 0), B("wood", 6.0, 1.2, 1.2),
+             C("stone", 4.8, 0), C("stone", 4.8, 0.5), C("stone", 4.8, 1.0), C("stone", 4.8, 1.5), C("stone", 4.8, 2.0), C("wood", 4.8, 2.5),
+             C("glass", 5.6, 3.55)],
+    foes: [[9.1, 3.0], [6.0, 1.44], [7.38, 0], [6.3, 3.55]] },
+];
+
+// ---------- game logic ----------
+class Game {
+  constructor(idx) {
+    const L = LEVELS[idx];
+    this.idx = idx; this.t = 0; this.state = "play";
+    this.world = new World(); this.blocks = []; this.foes = []; this.birds = []; this.statics = [];
+    this.birdsLeft = L.birds; this.lastLaunch = -9; this.events = []; this.dead = [];
+    this.calm = 0; this.over = 0; this.winT = 0;
+    const w = this.world;
+    w.add(makeBody({ kind: "ground", x: W / 2, y: GROUND + 1, w: W + 12, h: 2, fr: 0.8 }));
+    for (const [x, bottom, bw, bh] of L.statics) this.statics.push(w.add(makeBody({ kind: "ledge", x, y: GROUND - bottom - bh / 2, w: bw, h: bh, fr: 0.8 })));
+    for (const [mat, x, gy, bw, bh] of L.blocks) {
+      const m = MAT[mat];
+      this.blocks.push(w.add(makeBody({ kind: "block", mat, x, y: GROUND - gy, w: bw, h: bh, m: bw * bh * m.dens, hp: m.hp, maxHp: m.hp })));
+    }
+    for (const [x, base] of L.foes) this.foes.push(w.add(makeBody({ kind: "foe", x, y: GROUND - base - FOE.r, r: FOE.r, m: FOE.m, hp: FOE.hp, maxHp: FOE.hp })));
+    // Let the towers settle before the first shot; nothing gets hurt while they do.
+    for (let i = 0; i < 120; i++) { w.detect(); w.solve(); }
+    for (const b of w.bodies) { b.vx = b.vy = b.av = 0; }
+  }
+
+  canShoot() { return this.state === "play" && this.birdsLeft > 0 && this.t - this.lastLaunch > 0.6 && this.birds.every((b) => b.hitAt); }
+
+  launch(vx, vy, x, y) {
+    if (!this.canShoot()) return null;
+    this.birdsLeft--; this.lastLaunch = this.t;
+    const bird = this.world.add(makeBody({ kind: "bird", x, y: Math.min(y, GROUND - BIRD.r - 0.02), r: BIRD.r, m: BIRD.m, fr: 0.5, vx, vy, slowFor: 0 }));
+    this.birds.push(bird);
+    this.events.push({ type: "launch", x, y });
+    return bird;
+  }
+
+  hit(a, b, s) {
+    const base = (s - HIT_MIN) / (a.im + b.im);
+    this.hurt(a, base, b); this.hurt(b, base, a);
+    if (s > 2.5) this.events.push({ type: "hit", s, x: (a.r ? a.x : b.x), y: (a.r ? a.y : b.y) });
+  }
+
+  hurt(x, d, other) {
+    if (x.hp === Infinity || x.dead) return;
+    if (!other.im) d *= 0.6;                          // the ground is softer than a flying chick
+    x.hp -= d;
+    if (x.hp > 0) return;
+    x.dead = true; this.dead.push(x);
+    if (x.kind === "block" && other.im) { const k = MAT[x.mat].slow; other.vx *= k; other.vy *= k; }  // smashing through costs speed
+  }
+
+  kill(x) {
+    this.world.remove(x);
+    if (x.kind === "block") { this.blocks = this.blocks.filter((q) => q !== x); this.events.push({ type: "break", x: x.x, y: x.y, mat: x.mat, w: x.w, h: x.h }); }
+    else if (x.kind === "foe") { this.foes = this.foes.filter((q) => q !== x); this.events.push({ type: "pop", x: x.x, y: x.y }); }
+    else if (x.kind === "bird") { this.birds = this.birds.filter((q) => q !== x); this.events.push({ type: "poof", x: x.x, y: x.y }); }
+  }
+
+  maxSpeed() {
+    let m = 0;
+    for (const b of this.world.bodies) if (b.im) { const s = Math.abs(b.vx) + Math.abs(b.vy) + Math.abs(b.av) * 0.3; if (s > m) m = s; }
+    return m;
+  }
+
+  step() {
+    if (this.state !== "play") return;
+    const w = this.world;
+    this.t += DT;
+    w.detect();
+    for (const arb of w.arbs.values()) {
+      if (arb.a.kind === "bird" && !arb.a.hitAt) arb.a.hitAt = this.t;
+      if (arb.b.kind === "bird" && !arb.b.hitAt) arb.b.hitAt = this.t;
+    }
+    w.impacts((a, b, s) => this.hit(a, b, s));
+    // Broken things leave before the solver runs, so a chick flies on through what it smashed.
+    if (this.dead.length) { for (const x of this.dead) this.kill(x); this.dead = []; }
+    w.solve();
+
+    for (const b of w.bodies) {
+      if (!b.im) continue;
+      const out = b.x < -1.5 || b.x > W + 1.5 || b.y > H + 1;
+      if (b.kind === "bird") {
+        if (b.hitAt) b.slowFor = Math.hypot(b.vx, b.vy) < 0.4 ? b.slowFor + DT : 0;
+        if (out || (b.hitAt && (this.t - b.hitAt > 5 || b.slowFor > 0.8))) this.dead.push(b);
+      } else if (out) this.dead.push(b);
+    }
+    if (this.dead.length) { for (const x of this.dead) this.kill(x); this.dead = []; }
+
+    if (!this.foes.length) { this.winT += DT; if (this.winT > 1) this.state = "won"; return; }
+    if (!this.birdsLeft && !this.birds.length) {
+      this.over += DT;
+      this.calm = this.maxSpeed() < 0.25 ? this.calm + DT : 0;
+      if (this.calm > 1 || this.over > 7) this.state = "lost";
+    }
+  }
+}
+
+// A shot by angle (degrees above the horizon) and power 0..1, the way the slingshot gives it.
+function shotOf(deg, power) {
+  const a = deg * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+  return { vx: c * power * V_MAX, vy: -s * power * V_MAX, x: ANCHOR.x - c * power * MAX_PULL, y: ANCHOR.y + s * power * MAX_PULL };
+}
+
+// Plays a level without drawing: used to check that the levels can be won (and are not too easy).
+function simulate(idx, shots) {
+  const g = new Game(idx);
+  for (const [deg, power] of shots) {
+    if (g.state !== "play" || !g.birdsLeft) break;
+    for (let i = 0; i < 240 && !g.canShoot(); i++) g.step();
+    const s = shotOf(deg, power);
+    g.launch(s.vx, s.vy, s.x, s.y);
+    let calm = 0;
+    for (let i = 0; i < 120 * 14 && g.state === "play"; i++) {
+      g.step();
+      if (!g.birds.length) { calm = g.maxSpeed() < 0.25 ? calm + 1 : 0; if (calm > 90) break; }
+    }
+  }
+  for (let i = 0; i < 120 * 9 && g.state === "play" && !g.birdsLeft; i++) g.step();
+  return { state: g.state, foes: g.foes.length, blocks: g.blocks.length, birdsLeft: g.birdsLeft };
+}
+window.__sim = { simulate, LEVELS, Game };
+
+// ============================================================================================
+// Page: Telegram, the bot's API, sound, drawing, input.
+// ============================================================================================
+const tg = window.Telegram && window.Telegram.WebApp;
+const inTelegram = Boolean(tg && tg.platform && tg.platform !== "unknown");
+const $ = (id) => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+const BOT = params.get("bot") || "YooStonkBot";
+
+// The bot's address, the same rule as on the main page: only our own kinds of address are accepted.
+const DEFAULT_API = "https://posh-cauterize-buffing.ngrok-free.dev";
+const API_HOSTS = [/\.ngrok-free\.(dev|app)$/, /\.ngrok\.(app|io|dev)$/, /\.duckdns\.org$/];
+const API = (() => {
+  try {
+    const u = new URL(params.get("api") || DEFAULT_API);
+    if (u.protocol === "https:" && !u.username && !u.password && API_HOSTS.some((re) => re.test(u.hostname))) return u.origin;
+  } catch (e) { /* not an address: use the default */ }
+  return DEFAULT_API;
+})();
+const signed = Boolean(inTelegram && tg.initData);
+
+// state: what the bot knows (is there a giveaway, how far the player got in it, were the tickets given). null: no answer.
+async function api(action, level) {
+  if (!signed) return null;
+  const ctrl = new AbortController(), timer = setTimeout(() => ctrl.abort(), 8000);
+  try {
+    const r = await fetch(API + "/api/game", {
+      method: "POST", signal: ctrl.signal,
+      headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" },
+      body: JSON.stringify({ initData: tg.initData, action, level }),
+    });
+    const data = await r.json();
+    return data && !data.error ? data : null;
+  } catch (e) {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+const store = {
+  get(key, def) { try { const v = localStorage.getItem(key); return v === null ? def : v; } catch (e) { return def; } },
+  set(key, value) { try { localStorage.setItem(key, value); } catch (e) { /* private mode: the game works without it */ } },
+};
+
+// ---------- sound: a barely audible generated tune and soft effects, one switch for both ----------
+const AUDIO = (() => {
+  let ctx = null, music = null, sfx = null, timer = null, beat = 0, lastHit = 0;
+  let on = store.get("cb_sound", "1") !== "0";
+  const NOTES = [261.63, 293.66, 329.63, 392.0, 440.0, 523.25, 587.33];     // C major pentatonic
+  function tone(bus, freq, at, dur, gain, type = "sine", to = null) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, at);
+    if (to) o.frequency.exponentialRampToValueAtTime(to, at + dur);
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.linearRampToValueAtTime(gain, at + Math.min(0.4, dur * 0.3));
+    g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+    o.connect(g); g.connect(bus); o.start(at); o.stop(at + dur + 0.05);
+  }
+  function tick() {
+    if (!ctx || ctx.state !== "running") return;
+    const at = ctx.currentTime + 0.05;
+    if (beat % 4 === 0) tone(music, beat % 8 === 0 ? 130.81 : 110, at, 7, 0.5);                // a slow low drone
+    if (Math.random() < 0.8) tone(music, NOTES[Math.floor(Math.random() * NOTES.length)], at, 3.4, 0.6);
+    if (Math.random() < 0.25) tone(music, NOTES[Math.floor(Math.random() * 4)] * 2, at + 0.9, 2.6, 0.3);
+    beat++;
+  }
+  function start() {
+    if (ctx) { if (on) ctx.resume(); return; }
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    ctx = new AC();
+    music = ctx.createGain(); music.gain.value = 0.028;       // background: almost not there
+    sfx = ctx.createGain(); sfx.gain.value = 0.16;
+    const soft = ctx.createBiquadFilter(); soft.type = "lowpass"; soft.frequency.value = 1400;
+    music.connect(soft); soft.connect(ctx.destination); sfx.connect(ctx.destination);
+    timer = setInterval(tick, 1700);
+    if (!on) ctx.suspend(); else tick();
+  }
+  function play(kind, power = 1) {
+    if (!ctx || !on || ctx.state !== "running") return;
+    const at = ctx.currentTime;
+    if (kind === "launch") tone(sfx, 520, at, 0.22, 0.5, "sine", 170);
+    else if (kind === "pop") { tone(sfx, 320, at, 0.14, 0.7, "sine", 760); tone(sfx, 900, at + 0.05, 0.1, 0.25, "triangle"); }
+    else if (kind === "break") tone(sfx, power, at, 0.13, 0.5, "square", power * 0.5);
+    else if (kind === "poof") tone(sfx, 240, at, 0.18, 0.3, "sine", 120);
+    else if (kind === "hit") { if (at - lastHit < 0.07) return; lastHit = at; tone(sfx, 95, at, 0.12, Math.min(0.9, 0.2 + power * 0.07), "triangle", 60); }
+    else if (kind === "win") [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(sfx, f, at + i * 0.12, 0.35, 0.5, "triangle"));
+    else if (kind === "lose") [392, 329.63, 261.63].forEach((f, i) => tone(sfx, f, at + i * 0.18, 0.4, 0.4, "sine"));
+  }
+  function toggle() {
+    on = !on; store.set("cb_sound", on ? "1" : "0");
+    if (ctx) { if (on) ctx.resume(); else ctx.suspend(); }
+    return on;
+  }
+  document.addEventListener("visibilitychange", () => { if (ctx) { if (document.hidden) ctx.suspend(); else if (on) ctx.resume(); } });
+  return { start, play, toggle, isOn: () => on };
+})();
+
+// ---------- drawing ----------
+const cv = $("cv"), cx = cv.getContext("2d");
+let scale = 30, skyTop = 0, game = null, paused = true, drag = null, trail = [], oldTrail = [], parts = [], ended = false, lastTs = 0, acc = 0;
+
+function resize() {
+  scale = Math.min(innerWidth / W, innerHeight / H);
+  skyTop = H - innerHeight / scale;                  // a taller screen just gets more sky above
+  const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  cv.style.width = W * scale + "px"; cv.style.height = innerHeight + "px";
+  cv.width = Math.round(W * scale * dpr); cv.height = Math.round(innerHeight * dpr);
+  cx.setTransform(scale * dpr, 0, 0, scale * dpr, 0, -skyTop * scale * dpr);
+}
+
+function rr(x, y, w, h, r) {
+  cx.beginPath(); cx.moveTo(x + r, y); cx.arcTo(x + w, y, x + w, y + h, r); cx.arcTo(x + w, y + h, x, y + h, r);
+  cx.arcTo(x, y + h, x, y, r); cx.arcTo(x, y, x + w, y, r); cx.closePath();
+}
+
+function drawBack(t) {
+  const sky = cx.createLinearGradient(0, skyTop, 0, GROUND);
+  sky.addColorStop(0, "#fff7cf"); sky.addColorStop(0.55, "#ffe680"); sky.addColorStop(1, "#ffd24a");
+  cx.fillStyle = sky; cx.fillRect(0, skyTop, W, H - skyTop);
+  // sun
+  cx.save(); cx.translate(7.7, 2.6);
+  cx.fillStyle = "rgba(255, 255, 255, .35)"; cx.beginPath(); cx.arc(0, 0, 1.5, 0, 7); cx.fill();
+  cx.fillStyle = "#fffbe6"; cx.beginPath(); cx.arc(0, 0, 0.95, 0, 7); cx.fill();
+  cx.restore();
+  // clouds
+  cx.fillStyle = "rgba(255, 253, 240, .8)";
+  for (const [x0, y, s, v] of [[1.5, 2.2, 1, 0.05], [5.5, 4.1, 0.75, 0.035], [8.5, 5.6, 0.6, 0.06]]) {
+    const x = ((x0 + t * v) % (W + 3)) - 1.5;
+    cx.beginPath(); cx.arc(x, y, 0.42 * s, 0, 7); cx.arc(x + 0.5 * s, y - 0.18 * s, 0.52 * s, 0, 7); cx.arc(x + 1.05 * s, y, 0.4 * s, 0, 7); cx.fill();
+  }
+  // hills
+  for (const [base, amp, len, color] of [[9.6, 0.9, 3.1, "#ffc233"], [10.6, 0.7, 2.2, "#f2ad1c"]]) {
+    cx.fillStyle = color; cx.beginPath(); cx.moveTo(0, GROUND);
+    for (let x = 0; x <= W; x += 0.25) cx.lineTo(x, base - Math.sin(x / len * Math.PI + base) * amp * 0.5 - amp * 0.5);
+    cx.lineTo(W, GROUND); cx.closePath(); cx.fill();
+  }
+  // ground
+  cx.fillStyle = "#b9770e"; cx.fillRect(0, GROUND, W, H - GROUND);
+  cx.fillStyle = "#ffd84d"; cx.fillRect(0, GROUND, W, 0.16);
+  cx.fillStyle = "#e9b423"; cx.fillRect(0, GROUND + 0.16, W, 0.08);
+  cx.fillStyle = "rgba(90, 50, 0, .22)";
+  for (let i = 0; i < 14; i++) { cx.beginPath(); cx.arc((i * 0.83 + 0.3) % W, GROUND + 0.5 + (i * 37 % 7) * 0.11, 0.06, 0, 7); cx.fill(); }
+}
+
+function drawLedge(b) {
+  cx.fillStyle = "#a9690f"; rr(b.x - b.hw, b.y - b.hh, b.w, b.h, 0.06); cx.fill();
+  cx.fillStyle = "#ffd84d"; rr(b.x - b.hw, b.y - b.hh, b.w, 0.12, 0.06); cx.fill();
+}
+
+const SKIN = {
+  wood: ["#e3a336", "#8f5c12", "#c4841f"], stone: ["#a39a8a", "#5f5747", "#8a8172"], glass: ["rgba(255, 250, 215, .62)", "#d9b93c", "rgba(255, 255, 255, .7)"],
+};
+function drawBlock(b) {
+  const [fill, stroke, line] = SKIN[b.mat];
+  cx.save(); cx.translate(b.x, b.y); cx.rotate(b.ang);
+  cx.fillStyle = fill; cx.strokeStyle = stroke; cx.lineWidth = 0.035;
+  rr(-b.hw, -b.hh, b.w, b.h, 0.04); cx.fill(); cx.stroke();
+  cx.strokeStyle = line; cx.lineWidth = 0.02; cx.beginPath();
+  if (b.mat === "glass") { cx.moveTo(-b.hw * 0.5, -b.hh * 0.7); cx.lineTo(b.hw * 0.1, -b.hh * 0.7); }
+  else if (b.w > b.h) { cx.moveTo(-b.hw * 0.8, -b.hh * 0.3); cx.lineTo(b.hw * 0.8, -b.hh * 0.3); cx.moveTo(-b.hw * 0.6, b.hh * 0.35); cx.lineTo(b.hw * 0.7, b.hh * 0.35); }
+  else { cx.moveTo(-b.hw * 0.3, -b.hh * 0.8); cx.lineTo(-b.hw * 0.3, b.hh * 0.8); cx.moveTo(b.hw * 0.35, -b.hh * 0.6); cx.lineTo(b.hw * 0.35, b.hh * 0.7); }
+  cx.stroke();
+  if (b.hp < b.maxHp * 0.62) {                       // cracks
+    cx.strokeStyle = stroke; cx.lineWidth = 0.025; cx.beginPath();
+    cx.moveTo(-b.hw * 0.7, -b.hh * 0.2); cx.lineTo(-b.hw * 0.1, b.hh * 0.1); cx.lineTo(b.hw * 0.2, -b.hh * 0.3); cx.lineTo(b.hw * 0.75, b.hh * 0.25);
+    if (b.hp < b.maxHp * 0.3) { cx.moveTo(-b.hw * 0.1, b.hh * 0.1); cx.lineTo(-b.hw * 0.3, b.hh * 0.8); }
+    cx.stroke();
+  }
+  cx.restore();
+}
+
+function drawBird(x, y, ang, r, look = 0) {
+  cx.save(); cx.translate(x, y); cx.rotate(ang);
+  cx.fillStyle = "#f0a800";                          // tail and tuft
+  cx.beginPath(); cx.moveTo(-r * 0.8, 0); cx.lineTo(-r * 1.45, -r * 0.35); cx.lineTo(-r * 1.3, r * 0.05); cx.lineTo(-r * 1.45, r * 0.4); cx.closePath(); cx.fill();
+  cx.beginPath(); cx.moveTo(-r * 0.15, -r * 0.9); cx.lineTo(-r * 0.3, -r * 1.45); cx.lineTo(r * 0.05, -r * 1.1); cx.lineTo(r * 0.2, -r * 1.5); cx.lineTo(r * 0.3, -r * 0.85); cx.closePath(); cx.fill();
+  const g = cx.createRadialGradient(-r * 0.3, -r * 0.35, r * 0.1, 0, 0, r);
+  g.addColorStop(0, "#fff06a"); g.addColorStop(1, "#ffcc12");
+  cx.fillStyle = g; cx.strokeStyle = "#b98300"; cx.lineWidth = 0.035;
+  cx.beginPath(); cx.arc(0, 0, r, 0, 7); cx.fill(); cx.stroke();
+  cx.fillStyle = "#fff3b0"; cx.beginPath(); cx.ellipse(-r * 0.05, r * 0.45, r * 0.55, r * 0.38, 0, 0, 7); cx.fill();   // belly
+  cx.fillStyle = "#fff";
+  cx.beginPath(); cx.arc(r * 0.18, -r * 0.2, r * 0.27, 0, 7); cx.arc(r * 0.62, -r * 0.2, r * 0.22, 0, 7); cx.fill();
+  cx.fillStyle = "#2b1a00";
+  cx.beginPath(); cx.arc(r * 0.26 + look * r * 0.05, -r * 0.18, r * 0.11, 0, 7); cx.arc(r * 0.68 + look * r * 0.04, -r * 0.18, r * 0.1, 0, 7); cx.fill();
+  cx.strokeStyle = "#7a4a00"; cx.lineWidth = 0.05; cx.lineCap = "round";                                               // brows
+  cx.beginPath(); cx.moveTo(-r * 0.1, -r * 0.62); cx.lineTo(r * 0.42, -r * 0.42); cx.moveTo(r * 0.5, -r * 0.42); cx.lineTo(r * 0.88, -r * 0.55); cx.stroke();
+  cx.fillStyle = "#ff8a1f"; cx.strokeStyle = "#b85600"; cx.lineWidth = 0.025;                                           // beak
+  cx.beginPath(); cx.moveTo(r * 0.55, r * 0.08); cx.lineTo(r * 1.3, r * 0.22); cx.lineTo(r * 0.55, r * 0.42); cx.closePath(); cx.fill(); cx.stroke();
+  cx.restore();
+}
+
+function drawFoe(b, t) {
+  const r = b.r, hurt = b.hp < b.maxHp * 0.6, blink = Math.sin(t * 1.3 + b.id) > 0.985;
+  cx.save(); cx.translate(b.x, b.y); cx.rotate(b.ang);
+  cx.fillStyle = "#b3241a";                          // horns
+  cx.beginPath(); cx.moveTo(-r * 0.75, -r * 0.6); cx.lineTo(-r * 0.7, -r * 1.3); cx.lineTo(-r * 0.3, -r * 0.88); cx.closePath(); cx.fill();
+  cx.beginPath(); cx.moveTo(r * 0.75, -r * 0.6); cx.lineTo(r * 0.7, -r * 1.3); cx.lineTo(r * 0.3, -r * 0.88); cx.closePath(); cx.fill();
+  const g = cx.createRadialGradient(-r * 0.3, -r * 0.35, r * 0.1, 0, 0, r);
+  g.addColorStop(0, "#ff6b57"); g.addColorStop(1, "#e2301f");
+  cx.fillStyle = g; cx.strokeStyle = "#8f150c"; cx.lineWidth = 0.035;
+  cx.beginPath(); cx.arc(0, 0, r, 0, 7); cx.fill(); cx.stroke();
+  cx.fillStyle = "rgba(255, 190, 170, .5)"; cx.beginPath(); cx.arc(-r * 0.62, r * 0.2, r * 0.16, 0, 7); cx.arc(r * 0.62, r * 0.2, r * 0.16, 0, 7); cx.fill();
+  if (blink) {
+    cx.strokeStyle = "#4a0a05"; cx.lineWidth = 0.04; cx.beginPath();
+    cx.moveTo(-r * 0.55, -r * 0.12); cx.lineTo(-r * 0.15, -r * 0.12); cx.moveTo(r * 0.15, -r * 0.12); cx.lineTo(r * 0.55, -r * 0.12); cx.stroke();
+  } else {
+    cx.fillStyle = "#fff"; cx.beginPath(); cx.arc(-r * 0.34, -r * 0.12, r * 0.24, 0, 7); cx.arc(r * 0.34, -r * 0.12, r * 0.24, 0, 7); cx.fill();
+    cx.fillStyle = "#2b0500"; cx.beginPath();
+    cx.arc(-r * 0.3, -r * (hurt ? 0.02 : 0.1), r * 0.1, 0, 7); cx.arc(r * 0.3, -r * (hurt ? 0.2 : 0.1), r * 0.1, 0, 7); cx.fill();
+  }
+  cx.strokeStyle = "#5e0d06"; cx.lineWidth = 0.06; cx.lineCap = "round";     // brows
+  cx.beginPath(); cx.moveTo(-r * 0.68, -r * 0.52); cx.lineTo(-r * 0.12, -r * 0.3); cx.moveTo(r * 0.68, -r * 0.52); cx.lineTo(r * 0.12, -r * 0.3); cx.stroke();
+  cx.fillStyle = "#5e0d06"; cx.beginPath();                                   // mouth
+  if (hurt) cx.ellipse(0, r * 0.5, r * 0.2, r * 0.24, 0, 0, 7); else { cx.moveTo(-r * 0.42, r * 0.38); cx.quadraticCurveTo(0, r * 0.2, r * 0.42, r * 0.38); cx.quadraticCurveTo(0, r * 0.82, -r * 0.42, r * 0.38); }
+  cx.fill();
+  if (!hurt) { cx.fillStyle = "#fff"; cx.fillRect(-r * 0.2, r * 0.33, r * 0.15, r * 0.14); cx.fillRect(r * 0.06, r * 0.33, r * 0.15, r * 0.14); }
+  cx.restore();
+}
+
+const FORK = [{ x: ANCHOR.x - 0.2, y: ANCHOR.y - 0.12 }, { x: ANCHOR.x + 0.2, y: ANCHOR.y - 0.12 }];
+function drawSling(front, pos) {
+  cx.lineCap = "round";
+  if (!front) {
+    cx.strokeStyle = "#7a4b0d"; cx.lineWidth = 0.17; cx.beginPath();
+    cx.moveTo(ANCHOR.x + 0.02, GROUND); cx.lineTo(ANCHOR.x + 0.02, ANCHOR.y + 0.55); cx.lineTo(FORK[1].x, FORK[1].y); cx.stroke();
+    if (pos) { cx.strokeStyle = "#5a2d0c"; cx.lineWidth = 0.07; cx.beginPath(); cx.moveTo(FORK[1].x, FORK[1].y); cx.lineTo(pos.x - 0.1, pos.y + 0.05); cx.stroke(); }
+  } else {
+    cx.strokeStyle = "#9c6212"; cx.lineWidth = 0.17; cx.beginPath();
+    cx.moveTo(ANCHOR.x + 0.02, ANCHOR.y + 0.55); cx.lineTo(FORK[0].x, FORK[0].y); cx.stroke();
+    if (pos) { cx.strokeStyle = "#6b3710"; cx.lineWidth = 0.07; cx.beginPath(); cx.moveTo(FORK[0].x, FORK[0].y); cx.lineTo(pos.x - 0.1, pos.y + 0.05); cx.stroke(); }
+  }
+}
+
+function burst(x, y, n, colors, speed, size) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * 6.283, v = speed * (0.4 + Math.random() * 0.6);
+    parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - speed * 0.3, life: 0.5 + Math.random() * 0.4, age: 0,
+                 color: colors[i % colors.length], size: size * (0.6 + Math.random() * 0.7), spin: Math.random() * 6 });
+  }
+}
+
+function consume(events) {
+  for (const e of events) {
+    if (e.type === "launch") AUDIO.play("launch");
+    else if (e.type === "hit") AUDIO.play("hit", e.s);
+    else if (e.type === "break") {
+      const col = e.mat === "wood" ? ["#e3a336", "#c4841f", "#8f5c12"] : e.mat === "stone" ? ["#a39a8a", "#8a8172", "#5f5747"] : ["#fff8d0", "#ffe98a", "#ffffff"];
+      burst(e.x, e.y, 9, col, 3.2, 0.13);
+      AUDIO.play("break", e.mat === "glass" ? 1300 : e.mat === "wood" ? 210 : 120);
+    } else if (e.type === "pop") {
+      burst(e.x, e.y, 14, ["#ff6b57", "#e2301f", "#fff", "#ffd24a"], 3.6, 0.12);
+      AUDIO.play("pop");
+      if (inTelegram) tg.HapticFeedback.impactOccurred("medium");
+    } else if (e.type === "poof") { burst(e.x, e.y, 8, ["#ffe14a", "#fff3b0", "#ffcc12"], 2.2, 0.1); AUDIO.play("poof"); }
+  }
+  events.length = 0;
+}
+
+function draw(t) {
+  drawBack(t);
+  if (!game) return;
+  for (const b of game.statics) drawLedge(b);
+
+  // the path of the last flight, and of this one
+  for (const [list, alpha] of [[oldTrail, 0.3], [trail, 0.75]]) {
+    cx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+    for (let i = 0; i < list.length; i++) { cx.beginPath(); cx.arc(list[i].x, list[i].y, 0.045 + (i % 3) * 0.012, 0, 7); cx.fill(); }
+  }
+
+  const loaded = game.canShoot() || (drag && game.birdsLeft > 0);
+  const pos = drag ? drag.pos : loaded ? ANCHOR : null;
+  drawSling(false, pos);
+  for (const b of game.blocks) drawBlock(b);
+  for (const b of game.foes) drawFoe(b, t);
+  for (const b of game.birds) drawBird(b.x, b.y, b.hitAt ? b.ang : Math.atan2(b.vy, b.vx), b.r, 1);
+  // the chicks still waiting, in a line behind the slingshot
+  const waiting = game.birdsLeft - (loaded ? 1 : 0);
+  for (let i = 0; i < waiting; i++) drawBird(1.15 - i * 0.62, GROUND - BIRD.r - Math.abs(Math.sin(t * 2.2 + i * 1.7)) * 0.07, 0, BIRD.r * 0.92);
+  if (pos) drawBird(pos.x, pos.y, drag ? Math.atan2(ANCHOR.y - pos.y, ANCHOR.x - pos.x) : 0, BIRD.r, 1);
+  drawSling(true, pos);
+
+  if (drag && drag.power > 0.12) {                   // where the flight begins; the rest is for the player to judge
+    cx.fillStyle = "rgba(90, 50, 0, .55)";
+    for (let i = 1; i <= 9; i++) {
+      const s = i * 0.075;
+      cx.beginPath(); cx.arc(drag.pos.x + drag.vx * s, drag.pos.y + drag.vy * s + GRAV * s * s / 2, 0.075 - i * 0.004, 0, 7); cx.fill();
+    }
+  }
+
+  for (const p of parts) {
+    cx.save(); cx.globalAlpha = Math.max(0, 1 - p.age / p.life); cx.translate(p.x, p.y); cx.rotate(p.spin + p.age * 6);
+    cx.fillStyle = p.color; cx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size); cx.restore();
+  }
+}
+
+function frame(ts) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.05, (ts - lastTs) / 1000 || 0);
+  lastTs = ts;
+  if (game && !paused) {
+    acc += dt;
+    while (acc >= DT) { game.step(); acc -= DT; }
+    const flying = game.birds.find((b) => !b.hitAt);
+    if (flying) trail.push({ x: flying.x, y: flying.y });
+    consume(game.events);
+    $("foes").textContent = "😈 " + game.foes.length;
+    if (!ended && game.state !== "play") { ended = true; game.state === "won" ? onWin() : onLose(); }
+  }
+  for (const p of parts) { p.age += dt; p.vy += GRAV * 0.6 * dt; p.x += p.vx * dt; p.y += p.vy * dt; }
+  parts = parts.filter((p) => p.age < p.life);
+  draw(ts / 1000);
+}
+
+// ---------- input: pull the chick back and let go ----------
+function worldPoint(e) {
+  const r = cv.getBoundingClientRect();
+  return { x: (e.clientX - r.left) / scale, y: (e.clientY - r.top) / scale + skyTop };
+}
+function aim(p) {
+  // Near the chick the finger holds it; anywhere else the drag is relative, so a thumb doesn't have to cover it.
+  let px = drag.direct ? p.x - ANCHOR.x : p.x - drag.start.x, py = drag.direct ? p.y - ANCHOR.y : p.y - drag.start.y;
+  const d = Math.hypot(px, py);
+  if (d > MAX_PULL) { px *= MAX_PULL / d; py *= MAX_PULL / d; }
+  const y = Math.min(ANCHOR.y + py, GROUND - BIRD.r - 0.02);
+  py = y - ANCHOR.y;
+  drag.pos = { x: ANCHOR.x + px, y };
+  drag.power = Math.hypot(px, py) / MAX_PULL;
+  drag.vx = -px / MAX_PULL * V_MAX; drag.vy = -py / MAX_PULL * V_MAX;
+}
+cv.addEventListener("pointerdown", (e) => {
+  if (!game || paused || !game.canShoot()) return;
+  e.preventDefault();
+  const p = worldPoint(e);
+  drag = { start: p, direct: Math.hypot(p.x - ANCHOR.x, p.y - ANCHOR.y) < 1.1, id: e.pointerId };
+  aim(p);
+  try { cv.setPointerCapture(e.pointerId); } catch (err) { /* not every webview has it */ }
+});
+cv.addEventListener("pointermove", (e) => { if (drag && e.pointerId === drag.id) { e.preventDefault(); aim(worldPoint(e)); } });
+function release(e) {
+  if (!drag || e.pointerId !== drag.id) return;
+  const d = drag; drag = null;
+  if (e.type === "pointercancel" || d.power < 0.12 || !game.canShoot()) return;
+  if (game.launch(d.vx, d.vy, d.pos.x, d.pos.y)) {
+    oldTrail = trail; trail = [];
+    if (inTelegram) tg.HapticFeedback.impactOccurred("light");
+  }
+}
+cv.addEventListener("pointerup", release);
+cv.addEventListener("pointercancel", release);
+
+// ---------- screens ----------
+let server = null;            // the bot's last answer, or null
+let level = 0;
+
+function unlocked() {
+  // In a giveaway the bot's count rules (the tickets are for a run made in it); otherwise the browser remembers.
+  const done = server && server.giveaway && !server.claimed ? server.done : Math.max(parseInt(store.get("cb_done", "0"), 10) || 0, server ? server.done : 0);
+  return Math.min(LEVELS.length, done + 1);
+}
+
+function rewardLine() {
+  if (!signed) return "🎟 Билеты за прохождение начисляются, если открыть игру из бота. Сейчас можно играть просто так.";
+  if (!server) return "Не получилось связаться с ботом — пока играй просто так.";
+  if (!server.giveaway) return "Сейчас розыгрыша нет — играй ради удовольствия. Начнётся новый — за прохождение всех уровней дадут <b>+3 билета</b>.";
+  if (server.claimed) return "✅ <b>+3 билета</b> за этот розыгрыш ты уже получил. Играй просто так!";
+  if (!server.joined) return "🎟 За прохождение всех уровней дают <b>+3 билета</b>, но ты ещё не участвуешь в розыгрыше. Нажми в боте «🎁 Розыгрыш» → «Участвовать».";
+  return "🎟 Пройди все 3 уровня — получишь <b>+3 билета</b> в розыгрыше!";
+}
+
+function show(html) { $("card").innerHTML = html; $("modal").classList.remove("hidden"); paused = true; }
+function hide() { $("modal").classList.add("hidden"); paused = false; }
+
+function welcome() {
+  const open = unlocked();
+  let pick = Math.min(open, LEVELS.length) - 1;
+  show(`
+    <div class="big">🐥</div>
+    <h1>Цыпа-бум</h1>
+    <p class="center">Красные вредины засели в башнях.<br>Сбей их всех цыплятами из рогатки!</p>
+    <ol>
+      <li><b>Потяни цыплёнка назад</b> и отпусти. Чем сильнее натянешь, тем дальше полетит.</li>
+      <li>Точки показывают только <b>начало полёта</b> — остальное на глаз.</li>
+      <li>Вредина лопается от <b>прямого попадания</b>, упавшего блока или падения с высоты.</li>
+      <li><b>Стекло</b> и <b>дерево</b> ломаются, <b>камень</b> почти нет — его надо ронять.</li>
+      <li>Цыплят мало. Не хватило — уровень заново.</li>
+    </ol>
+    <div class="reward">${rewardLine()}</div>
+    <div class="levels">${LEVELS.map((L, i) => `<button type="button" data-i="${i}" ${i < open ? "" : "disabled"}>${i < open ? "" : "🔒 "}${i + 1}. ${L.name}</button>`).join("")}</div>
+    <button class="go" id="play">▶ Играть</button>`);
+  const buttons = [...document.querySelectorAll(".levels button")];
+  const mark = () => buttons.forEach((b, i) => b.classList.toggle("on", i === pick));
+  buttons.forEach((b, i) => b.addEventListener("click", () => { pick = i; mark(); }));
+  mark();
+  $("play").addEventListener("click", () => { AUDIO.start(); startLevel(pick); });
+}
+
+function startLevel(i) {
+  level = i; game = new Game(i); ended = false; drag = null; trail = []; oldTrail = []; parts = []; acc = 0;
+  $("lvl").textContent = `${i + 1}/${LEVELS.length} · ${LEVELS[i].name}`;
+  hide();
+  api("start", i + 1);
+}
+
+async function onWin() {
+  AUDIO.play("win");
+  if (inTelegram) tg.HapticFeedback.notificationOccurred("success");
+  store.set("cb_done", String(Math.max(parseInt(store.get("cb_done", "0"), 10) || 0, level + 1)));
+  const left = game.birdsLeft, last = level === LEVELS.length - 1;
+  const sent = api("level", level + 1);
+  if (!last) {
+    sent.then((r) => { if (r) server = r; });
+    show(`<div class="big">🎉</div><h1>Уровень ${level + 1} пройден!</h1>
+      <p class="center">${left ? `В запасе осталось цыплят: <b>${left}</b>.` : "Последним цыплёнком — красиво!"}</p>
+      <button class="go" id="next">Дальше ▶</button>`);
+    $("next").addEventListener("click", () => startLevel(level + 1));
+    return;
+  }
+  show(`<div class="big">🏆</div><h1>Все уровни пройдены!</h1><div class="reward" id="prize">Сообщаю боту…</div>
+    <button class="go" id="again">Сыграть ещё</button><button class="ghost" id="leave">← На сайт</button>`);
+  $("again").addEventListener("click", welcome);
+  $("leave").addEventListener("click", leave);
+  const r = await sent;
+  if (r) server = r;
+  let text;
+  if (!signed) text = "Билеты начисляются, только если открыть игру из бота. Но ты молодец 😎";
+  else if (!r) text = "Не получилось связаться с ботом. Открой игру ещё раз позже: если розыгрыш идёт, билеты начислятся.";
+  else if (r.reward) text = `🎟 <b>+${r.reward} билета</b> начислены! Теперь у тебя <b>${r.tickets}</b>.`;
+  else if (!r.giveaway) text = "Сейчас розыгрыша нет, так что это было ради удовольствия 😎 Начнётся новый — пройди игру и получи <b>+3 билета</b>.";
+  else if (r.claimed) text = "✅ Билеты за этот розыгрыш ты уже получил. Это было просто красиво!";
+  else if (r.done < LEVELS.length) text = "Бот засчитывает уровни, пройденные по порядку в текущем розыгрыше. Начни с первого открытого уровня — и билеты твои.";
+  else text = "Чтобы забрать <b>+3 билета</b>, прими участие в розыгрыше: в боте «🎁 Розыгрыш» → «Участвовать». Потом открой игру — проходить заново не придётся.";
+  if ($("prize")) $("prize").innerHTML = text;
+}
+
+function onLose() {
+  AUDIO.play("lose");
+  const n = game.foes.length;
+  show(`<div class="big">😵</div><h1>Цыплята кончились</h1>
+    <p class="center">Осталось вредин: <b>${n}</b>. Попробуй другой угол или силу — след прошлого выстрела остаётся на экране.</p>
+    <button class="go" id="retry">↻ Ещё раз</button><button class="ghost" id="menu">Правила и уровни</button>`);
+  $("retry").addEventListener("click", () => startLevel(level));
+  $("menu").addEventListener("click", welcome);
+}
+
+function leave() { location.href = "index.html" + location.search; }
+
+$("restart").addEventListener("click", () => { if (game) startLevel(level); });
+$("back").addEventListener("click", leave);
+$("snd").textContent = AUDIO.isOn() ? "🔈" : "🔇";
+$("snd").addEventListener("click", () => { AUDIO.start(); $("snd").textContent = AUDIO.toggle() ? "🔈" : "🔇"; });
+
+addEventListener("resize", resize);
+if (inTelegram) {
+  tg.ready(); tg.expand();
+  if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();    // pulling the slingshot down must not close the app
+  tg.BackButton.show(); tg.BackButton.onClick(leave);
+  tg.onEvent("viewportChanged", resize);
+}
+resize();
+requestAnimationFrame(frame);
+welcome();
+api("state").then((r) => { if (r) { server = r; if (!game) welcome(); } else if (signed && !game) welcome(); });
+</script>
+</body>
+</html>
