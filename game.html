@@ -553,6 +553,8 @@ const AUDIO = (() => {
 // ---------- drawing ----------
 const cv = $("cv"), cx = cv.getContext("2d");
 let scale = 30, skyTop = 0, viewW = W, dpr = 1, game = null, paused = true, drag = null, trail = [], oldTrail = [], parts = [], ended = false, lastTs = 0, acc = 0;
+const BIG_VIEW_H = 9.4;       // world height a big level shows at least: its tallest tower and some sky
+const PULL_PX = 120;          // on a big level (drawn small) the full pull takes this many screen pixels of finger
 let menu = true;              // the level list is up: always upright
 let rotated = false;          // a big level on an upright phone: drawn turned 90°, the player turns the phone
 
@@ -571,9 +573,11 @@ function resize() {
   const vw = rotated ? innerHeight : innerWidth, vh = rotated ? innerWidth : innerHeight;   // the game's own screen
   const st = document.body.style;
   st.setProperty("--rw", vw + "px"); st.setProperty("--rh", vh + "px"); st.setProperty("--sw", innerWidth + "px");
-  // Upright, a phone sees W units across and the rest is camera work. Sideways it sees 10 units of height,
-  // the lower part of the sky, so the chicks stay big and most of a big level fits at once.
-  scale = Math.min(vw / W, vh / (vw > vh ? 10 : H));
+  // A big level fits whole: its full width, and at least BIG_VIEW_H of height above the ground's bottom (the towers
+  // and the sky over them), so there is nothing to scroll. The small ones: upright a phone sees W units across;
+  // sideways it sees 10 units of height, the lower part of the sky.
+  if (!menu && game && game.width > W) scale = Math.min(vw / (game.width + 0.4), vh / BIG_VIEW_H);
+  else scale = Math.min(vw / W, vh / (vw > vh ? 10 : H));
   skyTop = H - vh / scale;                           // the top of the screen in world units
   viewW = vw / scale;
   dpr = Math.min(window.devicePixelRatio || 1, 2.5);
@@ -843,7 +847,10 @@ function worldPoint(e) {
 }
 function aim(p) {
   // Near the chick the finger holds it; anywhere else the drag is relative, so a thumb doesn't have to cover it.
-  let px = drag.direct ? p.x - ANCHOR.x : p.x - drag.start.x, py = drag.direct ? p.y - ANCHOR.y : p.y - drag.start.y;
+  // A big level is drawn small, so there the pull is always relative and slower: PULL_PX of finger for full power.
+  const big = game.width > W, k = big ? scale / PULL_PX * MAX_PULL : 1;
+  let px = drag.direct && !big ? p.x - ANCHOR.x : (p.x - drag.start.x) * k;
+  let py = drag.direct && !big ? p.y - ANCHOR.y : (p.y - drag.start.y) * k;
   const d = Math.hypot(px, py);
   if (d > MAX_PULL) { px *= MAX_PULL / d; py *= MAX_PULL / d; }
   const y = Math.min(ANCHOR.y + py, GROUND - BIRD.r - 0.02);
@@ -922,7 +929,7 @@ function welcome() {
       <li>Вредина лопается от <b>прямого попадания</b>, упавшего блока или падения с высоты.</li>
       <li><b>Стекло</b> и <b>дерево</b> ломаются, <b>камень</b> почти нет — его надо ронять.</li>
       <li>Цыплят мало. Не хватило — уровень заново.</li>
-      <li><b>Уровни 4 и 5 большие и горизонтальные:</b> поверни телефон боком. Камера сама покажет крепость, проведи пальцем по экрану, чтобы осмотреться, а рогатку тяни от цыплёнка.</li>
+      <li><b>Уровни 4 и 5 большие и горизонтальные:</b> поверни телефон боком — весь уровень будет на экране. Рогатку можно тянуть из любого места экрана, натяжение там плавнее.</li>
     </ol>
     <div class="reward">${rewardLine()}</div>
     <div class="levels">${LEVELS.map((L, i) => `<button type="button" data-i="${i}" ${i < open ? "" : "disabled"}>${i < open ? "" : "🔒 "}${i + 1}. ${L.name}</button>`).join("")}</div>
