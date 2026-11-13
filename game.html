@@ -30,8 +30,8 @@
   .card ol { margin: 8px 0; padding-left: 22px; font-size: 14.5px; }
   .card li { margin-bottom: 5px; }
   .reward { background: #ffe58a; border-radius: 12px; padding: 10px 12px; font-size: 14.5px; margin: 12px 0; }
-  .levels { display: flex; gap: 8px; margin: 12px 0; }
-  .levels button { flex: 1; padding: 10px 4px; border-radius: 12px; border: 2px solid #e2b12a; background: #fff; color: #4a3200;
+  .levels { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+  .levels button { flex: 1 1 28%; padding: 10px 4px; border-radius: 12px; border: 2px solid #e2b12a; background: #fff; color: #4a3200;
                    font-size: 13px; font-weight: 700; }
   .levels button.on { background: #ffcf33; }
   .levels button:disabled { opacity: .45; }
@@ -49,7 +49,7 @@
   <canvas id="cv"></canvas>
   <div id="hud">
     <button class="ibtn" id="back" aria-label="Назад">←</button>
-    <div class="pill" id="lvl">Уровень 1/3</div>
+    <div class="pill" id="lvl">Уровень 1</div>
     <div class="grow"></div>
     <div class="pill" id="foes">😈 0</div>
     <button class="ibtn" id="restart" aria-label="Заново">↻</button>
@@ -61,13 +61,14 @@
 <script>
 "use strict";
 // ============================================================================================
-// «Цыпа-бум»: a slingshot game. Yellow chicks against red pests on three levels.
+// «Цыпа-бум»: a slingshot game. Yellow chicks against red pests on five levels; the last two are wider
+// than the screen and the camera moves over them.
 // The physics is our own (boxes and circles, sequential impulses with warm starting), so the page
 // needs no library. Game is pure logic; the renderer below only reads it.
 // ============================================================================================
 
 // ---------- world ----------
-const W = 10, H = 13.4, GROUND = 12;                 // world units; the ground's top is y = GROUND
+const W = 10, H = 13.4, GROUND = 12;                 // world units; the ground's top is y = GROUND; W: the narrow levels' width
 const GRAV = 12, DT = 1 / 120, ITER = 8, SLOP = 0.01, BIAS = 0.2;
 const ANCHOR = { x: 1.9, y: GROUND - 1.75 }, MAX_PULL = 1.5, V_MAX = 13.5;
 const MAT = {
@@ -262,8 +263,10 @@ class World {
 const P = (mat, x, base, h = 1.2) => [mat, x, base + h / 2, 0.24, h];
 const B = (mat, x, base, w) => [mat, x, base + 0.12, w, 0.24];
 const C = (mat, x, base, s = 0.5) => [mat, x, base + s / 2, s, s];
-// Tuned by playing them with simulate(): each can be won with two exact shots, and random shooting wins
-// about one try in a hundred or less. Changing a level? Check it the same way.
+// Tuned by playing them with simulate(). Known wins, [angle, power] per chick:
+//   1: [[2,0.89],[38,1]]   2: [[6,0.89],[18,0.78]]   3: [[26,1],[54,0.89],[50,0.89]]
+//   4: [[17,1],[29,0.835],[8,0.78],[20,1],[41,1]]   5: [[80,0.829],[26,0.835],[35,1],[23,0.89],[17,0.835],[68,1]]
+// Random shooting wins the small ones about one try in a hundred or less. Changing a level? Check it the same way.
 const LEVELS = [
   { name: "Вышка", birds: 3,
     statics: [[4.4, 0, 0.5, 0.7], [8.7, 2.85, 1.6, 0.3]],              // x, bottom, width, height
@@ -285,6 +288,41 @@ const LEVELS = [
              C("stone", 4.8, 0), C("stone", 4.8, 0.5), C("stone", 4.8, 1.0), C("stone", 4.8, 1.5), C("stone", 4.8, 2.0), C("wood", 4.8, 2.5),
              C("glass", 5.6, 3.55)],
     foes: [[9.1, 3.0], [6.0, 1.44], [7.38, 0], [6.3, 3.55]] },
+  // The big ones: two to three screens wide, three times the blocks and pests, a stronger slingshot to reach.
+  { name: "Деревня", birds: 6, width: 22, power: 1.3,
+    statics: [[12.0, 0, 2.6, 1.0], [21.2, 3.5, 1.2, 0.3]],
+    blocks: [// a house
+             P("wood", 6.8, 0), P("wood", 8.2, 0), B("wood", 7.5, 1.2, 1.7),
+             P("glass", 6.9, 1.44), P("glass", 8.1, 1.44), B("wood", 7.5, 2.64, 1.5), C("stone", 7.5, 2.88),
+             // a three-storey tower on the hill
+             P("stone", 11.2, 1.0), P("stone", 12.8, 1.0), B("wood", 12.0, 2.2, 1.9),
+             P("stone", 11.4, 2.44), P("wood", 12.6, 2.44), B("wood", 12.0, 3.64, 1.5),
+             P("wood", 11.6, 3.88, 1.0), P("wood", 12.4, 3.88, 1.0), B("wood", 12.0, 4.88, 1.1), C("glass", 12.0, 5.12),
+             // a long hall with a stone roof beam
+             P("wood", 16.2, 0), P("stone", 17.4, 0), P("wood", 18.6, 0), P("stone", 19.8, 0),
+             B("wood", 16.8, 1.2, 1.5), B("wood", 19.2, 1.2, 1.5), B("stone", 18.0, 1.44, 3.9),
+             P("glass", 16.8, 1.68), P("glass", 19.2, 1.68), B("wood", 18.0, 2.88, 3.0), C("stone", 18.0, 3.12)],
+    foes: [[7.5, 0], [7.5, 1.44], [12.0, 1.0], [12.0, 2.44], [12.0, 3.88],
+           [16.8, 0], [19.2, 0], [18.0, 1.68], [21.2, 3.8]] },
+  { name: "Цитадель", birds: 7, width: 25, power: 1.3,
+    statics: [[13.0, 0, 4.0, 0.6], [18.9, 0, 0.6, 2.2], [18.9, 2.2, 1.8, 0.3]],
+    blocks: [// the outer wall and a shelter behind it
+             C("stone", 6.5, 0), C("stone", 6.5, 0.5), C("stone", 6.5, 1.0), C("stone", 6.5, 1.5), B("wood", 6.5, 2.0, 0.9),
+             P("wood", 7.1, 0, 0.9), P("wood", 8.1, 0, 0.9), B("wood", 7.6, 0.9, 1.3),
+             // the keep: three floors on a stone base
+             P("stone", 11.3, 0.6), P("stone", 12.4, 0.6), P("wood", 13.6, 0.6), P("stone", 14.7, 0.6),
+             B("stone", 11.85, 1.8, 1.35), B("stone", 14.15, 1.8, 1.35), B("wood", 13.0, 2.04, 3.6),
+             P("wood", 11.6, 2.28), P("glass", 12.6, 2.28), P("glass", 13.4, 2.28), P("wood", 14.4, 2.28),
+             B("wood", 12.1, 3.48, 1.2), B("wood", 13.9, 3.48, 1.2), B("stone", 13.0, 3.72, 3.0),
+             P("stone", 12.4, 3.96), P("stone", 13.6, 3.96), B("wood", 13.0, 5.16, 1.5), C("glass", 13.0, 5.4),
+             // a stone block hiding a pest in the gap
+             C("stone", 16.4, 0), C("stone", 16.4, 0.5),
+             // a lookout on the pillar
+             P("wood", 18.3, 2.5), P("wood", 19.5, 2.5), B("stone", 18.9, 3.7, 1.5),
+             // the back hut
+             P("wood", 21.6, 0), P("wood", 23.0, 0), B("wood", 22.3, 1.2, 1.7), C("stone", 21.8, 1.44), C("stone", 22.8, 1.44)],
+    foes: [[6.5, 2.24], [7.6, 0], [11.85, 0.6], [13.0, 0.6], [14.15, 0.6], [12.1, 2.28], [13.9, 2.28], [13.0, 3.96],
+           [17.0, 0], [18.9, 2.5], [22.3, 0]] },
 ];
 
 // ---------- game logic ----------
@@ -292,11 +330,13 @@ class Game {
   constructor(idx) {
     const L = LEVELS[idx];
     this.idx = idx; this.t = 0; this.state = "play";
+    this.width = L.width || W;                       // a wide level is longer than the screen
+    this.vmax = V_MAX * (L.power || 1);              // and has a stronger slingshot to reach its far end
     this.world = new World(); this.blocks = []; this.foes = []; this.birds = []; this.statics = [];
     this.birdsLeft = L.birds; this.lastLaunch = -9; this.events = []; this.dead = [];
     this.calm = 0; this.over = 0; this.winT = 0;
     const w = this.world;
-    w.add(makeBody({ kind: "ground", x: W / 2, y: GROUND + 1, w: W + 12, h: 2, fr: 0.8 }));
+    w.add(makeBody({ kind: "ground", x: this.width / 2, y: GROUND + 1, w: this.width + 12, h: 2, fr: 0.8 }));
     for (const [x, bottom, bw, bh] of L.statics) this.statics.push(w.add(makeBody({ kind: "ledge", x, y: GROUND - bottom - bh / 2, w: bw, h: bh, fr: 0.8 })));
     for (const [mat, x, gy, bw, bh] of L.blocks) {
       const m = MAT[mat];
@@ -360,10 +400,12 @@ class Game {
     // Broken things leave before the solver runs, so a chick flies on through what it smashed.
     if (this.dead.length) { for (const x of this.dead) this.kill(x); this.dead = []; }
     w.solve();
+    // Rolling resistance: a pest that has almost stopped stops, instead of creeping off its ledge for half a minute.
+    for (const f of this.foes) if (Math.abs(f.vx) + Math.abs(f.av * f.r) < 0.25 && Math.abs(f.vy) < 0.25) { f.vx *= 0.85; f.av *= 0.85; }
 
     for (const b of w.bodies) {
       if (!b.im) continue;
-      const out = b.x < -1.5 || b.x > W + 1.5 || b.y > H + 1;
+      const out = b.x < -1.5 || b.x > this.width + 1.5 || b.y > H + 1;
       if (b.kind === "bird") {
         if (b.hitAt) b.slowFor = Math.hypot(b.vx, b.vy) < 0.4 ? b.slowFor + DT : 0;
         if (out || (b.hitAt && (this.t - b.hitAt > 5 || b.slowFor > 0.8))) this.dead.push(b);
@@ -381,9 +423,9 @@ class Game {
 }
 
 // A shot by angle (degrees above the horizon) and power 0..1, the way the slingshot gives it.
-function shotOf(deg, power) {
+function shotOf(deg, power, vmax = V_MAX) {
   const a = deg * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
-  return { vx: c * power * V_MAX, vy: -s * power * V_MAX, x: ANCHOR.x - c * power * MAX_PULL, y: ANCHOR.y + s * power * MAX_PULL };
+  return { vx: c * power * vmax, vy: -s * power * vmax, x: ANCHOR.x - c * power * MAX_PULL, y: ANCHOR.y + s * power * MAX_PULL };
 }
 
 // Plays a level without drawing: used to check that the levels can be won (and are not too easy).
@@ -392,7 +434,7 @@ function simulate(idx, shots) {
   for (const [deg, power] of shots) {
     if (g.state !== "play" || !g.birdsLeft) break;
     for (let i = 0; i < 240 && !g.canShoot(); i++) g.step();
-    const s = shotOf(deg, power);
+    const s = shotOf(deg, power, g.vmax);
     g.launch(s.vx, s.vy, s.x, s.y);
     let calm = 0;
     for (let i = 0; i < 120 * 14 && g.state === "play"; i++) {
@@ -506,49 +548,90 @@ const AUDIO = (() => {
 
 // ---------- drawing ----------
 const cv = $("cv"), cx = cv.getContext("2d");
-let scale = 30, skyTop = 0, game = null, paused = true, drag = null, trail = [], oldTrail = [], parts = [], ended = false, lastTs = 0, acc = 0;
+let scale = 30, skyTop = 0, viewW = W, dpr = 1, game = null, paused = true, drag = null, trail = [], oldTrail = [], parts = [], ended = false, lastTs = 0, acc = 0;
 
 function resize() {
-  scale = Math.min(innerWidth / W, innerHeight / H);
+  scale = Math.min(innerWidth / W, innerHeight / H);  // a phone always sees W units across, the rest is camera work
   skyTop = H - innerHeight / scale;                  // a taller screen just gets more sky above
-  const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
-  cv.style.width = W * scale + "px"; cv.style.height = innerHeight + "px";
-  cv.width = Math.round(W * scale * dpr); cv.height = Math.round(innerHeight * dpr);
-  cx.setTransform(scale * dpr, 0, 0, scale * dpr, 0, -skyTop * scale * dpr);
+  viewW = innerWidth / scale;
+  dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  cv.style.width = innerWidth + "px"; cv.style.height = innerHeight + "px";
+  cv.width = Math.round(innerWidth * dpr); cv.height = Math.round(innerHeight * dpr);
+  CAM.clamp();
 }
+
+// ---------- camera: a wide level is shown a screen at a time ----------
+// At the start it flies over the whole level and back to the slingshot; it follows a chick in flight,
+// returns to the slingshot when the next one is ready; a finger dragged away from the slingshot looks around.
+const CAM = {
+  x: 0, intro: 0, introFrom: 0, lookedAt: -9, goneAt: -9, hadBird: false,
+  wide() { return game && game.width > viewW + 0.01; },
+  max() { return game ? Math.max(0, game.width - viewW) : 0; },
+  clamp() { this.x = this.wide() ? Math.max(0, Math.min(this.max(), this.x)) : (game ? (game.width - viewW) / 2 : 0); },
+  start() { this.lookedAt = -9; this.goneAt = -9; this.hadBird = false; this.intro = this.wide() ? 3.4 : 0; this.x = this.max(); this.clamp(); },
+  skip() { this.intro = 0; },
+  update(dt, now) {
+    if (!this.wide()) { this.clamp(); return; }
+    if (this.intro > 0) {                            // hold on the castle a moment, then glide to the slingshot
+      this.intro = Math.max(0, this.intro - dt);
+      const k = Math.min(1, Math.max(0, (2.2 - this.intro) / 2.2));
+      this.x = this.max() * (1 - k * k * (3 - 2 * k));
+      return;
+    }
+    const bird = game.birds[game.birds.length - 1];
+    if (this.hadBird && !bird) this.goneAt = now;
+    this.hadBird = Boolean(bird);
+    let target = this.x;
+    if (bird) target = bird.x - viewW * 0.38;
+    else if (game.canShoot() && now - this.goneAt > 1.6 && now - this.lookedAt > 2.5) target = 0;
+    if (drag && drag.pan) target = this.x;
+    this.x += (target - this.x) * Math.min(1, dt * (bird ? 6 : 3));
+    this.clamp();
+  },
+};
 
 function rr(x, y, w, h, r) {
   cx.beginPath(); cx.moveTo(x + r, y); cx.arcTo(x + w, y, x + w, y + h, r); cx.arcTo(x + w, y + h, x, y + h, r);
   cx.arcTo(x, y + h, x, y, r); cx.arcTo(x, y, x + w, y, r); cx.closePath();
 }
 
+// Drawn in world units with the camera applied; the sun stays put on the screen, clouds and hills move slower
+// than the ground, so a wide level feels deep.
 function drawBack(t) {
+  const x0 = CAM.x, x1 = CAM.x + viewW;
   const sky = cx.createLinearGradient(0, skyTop, 0, GROUND);
   sky.addColorStop(0, "#fff7cf"); sky.addColorStop(0.55, "#ffe680"); sky.addColorStop(1, "#ffd24a");
-  cx.fillStyle = sky; cx.fillRect(0, skyTop, W, H - skyTop);
+  cx.fillStyle = sky; cx.fillRect(x0, skyTop, viewW, H - skyTop);
   // sun
-  cx.save(); cx.translate(7.7, 2.6);
+  cx.save(); cx.translate(x0 + Math.min(viewW - 2.3, 7.7), 2.6);
   cx.fillStyle = "rgba(255, 255, 255, .35)"; cx.beginPath(); cx.arc(0, 0, 1.5, 0, 7); cx.fill();
   cx.fillStyle = "#fffbe6"; cx.beginPath(); cx.arc(0, 0, 0.95, 0, 7); cx.fill();
   cx.restore();
   // clouds
   cx.fillStyle = "rgba(255, 253, 240, .8)";
-  for (const [x0, y, s, v] of [[1.5, 2.2, 1, 0.05], [5.5, 4.1, 0.75, 0.035], [8.5, 5.6, 0.6, 0.06]]) {
-    const x = ((x0 + t * v) % (W + 3)) - 1.5;
+  for (const [c0, y, s, v] of [[1.5, 2.2, 1, 0.05], [5.5, 4.1, 0.75, 0.035], [8.5, 5.6, 0.6, 0.06]]) {
+    const span = viewW + 3, off = ((c0 + t * v - CAM.x * 0.3) % span + span) % span;
+    const x = x0 + off - 1.5;
     cx.beginPath(); cx.arc(x, y, 0.42 * s, 0, 7); cx.arc(x + 0.5 * s, y - 0.18 * s, 0.52 * s, 0, 7); cx.arc(x + 1.05 * s, y, 0.4 * s, 0, 7); cx.fill();
   }
   // hills
-  for (const [base, amp, len, color] of [[9.6, 0.9, 3.1, "#ffc233"], [10.6, 0.7, 2.2, "#f2ad1c"]]) {
-    cx.fillStyle = color; cx.beginPath(); cx.moveTo(0, GROUND);
-    for (let x = 0; x <= W; x += 0.25) cx.lineTo(x, base - Math.sin(x / len * Math.PI + base) * amp * 0.5 - amp * 0.5);
-    cx.lineTo(W, GROUND); cx.closePath(); cx.fill();
+  for (const [base, amp, len, color, par] of [[9.6, 0.9, 3.1, "#ffc233", 0.5], [10.6, 0.7, 2.2, "#f2ad1c", 0.75]]) {
+    cx.fillStyle = color; cx.beginPath(); cx.moveTo(x0, GROUND);
+    for (let x = x0; x <= x1 + 0.25; x += 0.25) {
+      const hx = x - CAM.x * (1 - par);
+      cx.lineTo(x, base - Math.sin(hx / len * Math.PI + base) * amp * 0.5 - amp * 0.5);
+    }
+    cx.lineTo(x1 + 0.25, GROUND); cx.closePath(); cx.fill();
   }
   // ground
-  cx.fillStyle = "#b9770e"; cx.fillRect(0, GROUND, W, H - GROUND);
-  cx.fillStyle = "#ffd84d"; cx.fillRect(0, GROUND, W, 0.16);
-  cx.fillStyle = "#e9b423"; cx.fillRect(0, GROUND + 0.16, W, 0.08);
+  cx.fillStyle = "#b9770e"; cx.fillRect(x0, GROUND, viewW, H - GROUND);
+  cx.fillStyle = "#ffd84d"; cx.fillRect(x0, GROUND, viewW, 0.16);
+  cx.fillStyle = "#e9b423"; cx.fillRect(x0, GROUND + 0.16, viewW, 0.08);
   cx.fillStyle = "rgba(90, 50, 0, .22)";
-  for (let i = 0; i < 14; i++) { cx.beginPath(); cx.arc((i * 0.83 + 0.3) % W, GROUND + 0.5 + (i * 37 % 7) * 0.11, 0.06, 0, 7); cx.fill(); }
+  for (let i = Math.floor(x0 / 0.83) - 1; i * 0.83 < x1 + 1; i++) {
+    const k = ((i % 14) + 14) % 14;
+    cx.beginPath(); cx.arc(i * 0.83 + 0.3, GROUND + 0.5 + (k * 37 % 7) * 0.11, 0.06, 0, 7); cx.fill();
+  }
 }
 
 function drawLedge(b) {
@@ -667,6 +750,7 @@ function consume(events) {
 }
 
 function draw(t) {
+  cx.setTransform(scale * dpr, 0, 0, scale * dpr, -CAM.x * scale * dpr, -skyTop * scale * dpr);
   drawBack(t);
   if (!game) return;
   for (const b of game.statics) drawLedge(b);
@@ -684,8 +768,8 @@ function draw(t) {
   for (const b of game.foes) drawFoe(b, t);
   for (const b of game.birds) drawBird(b.x, b.y, b.hitAt ? b.ang : Math.atan2(b.vy, b.vx), b.r, 1);
   // the chicks still waiting, in a line behind the slingshot
-  const waiting = game.birdsLeft - (loaded ? 1 : 0);
-  for (let i = 0; i < waiting; i++) drawBird(1.15 - i * 0.62, GROUND - BIRD.r - Math.abs(Math.sin(t * 2.2 + i * 1.7)) * 0.07, 0, BIRD.r * 0.92);
+  const waiting = game.birdsLeft - (loaded ? 1 : 0), gap = waiting > 2 ? Math.min(0.62, 1.5 / (waiting - 1)) : 0.62;
+  for (let i = waiting - 1; i >= 0; i--) drawBird(1.2 - i * gap, GROUND - BIRD.r - Math.abs(Math.sin(t * 2.2 + i * 1.7)) * 0.07, 0, BIRD.r * 0.92);
   if (pos) drawBird(pos.x, pos.y, drag ? Math.atan2(ANCHOR.y - pos.y, ANCHOR.x - pos.x) : 0, BIRD.r, 1);
   drawSling(true, pos);
 
@@ -718,13 +802,14 @@ function frame(ts) {
   }
   for (const p of parts) { p.age += dt; p.vy += GRAV * 0.6 * dt; p.x += p.vx * dt; p.y += p.vy * dt; }
   parts = parts.filter((p) => p.age < p.life);
+  if (game && !paused) CAM.update(dt, ts / 1000);
   draw(ts / 1000);
 }
 
 // ---------- input: pull the chick back and let go ----------
 function worldPoint(e) {
   const r = cv.getBoundingClientRect();
-  return { x: (e.clientX - r.left) / scale, y: (e.clientY - r.top) / scale + skyTop };
+  return { x: (e.clientX - r.left) / scale + CAM.x, y: (e.clientY - r.top) / scale + skyTop };
 }
 function aim(p) {
   // Near the chick the finger holds it; anywhere else the drag is relative, so a thumb doesn't have to cover it.
@@ -735,20 +820,32 @@ function aim(p) {
   py = y - ANCHOR.y;
   drag.pos = { x: ANCHOR.x + px, y };
   drag.power = Math.hypot(px, py) / MAX_PULL;
-  drag.vx = -px / MAX_PULL * V_MAX; drag.vy = -py / MAX_PULL * V_MAX;
+  drag.vx = -px / MAX_PULL * game.vmax; drag.vy = -py / MAX_PULL * game.vmax;
 }
 cv.addEventListener("pointerdown", (e) => {
-  if (!game || paused || !game.canShoot()) return;
+  if (!game || paused) return;
   e.preventDefault();
-  const p = worldPoint(e);
-  drag = { start: p, direct: Math.hypot(p.x - ANCHOR.x, p.y - ANCHOR.y) < 1.1, id: e.pointerId };
-  aim(p);
+  if (CAM.intro > 0) { CAM.skip(); return; }         // a tap ends the flyover
+  const p = worldPoint(e), near = Math.hypot(p.x - ANCHOR.x, p.y - ANCHOR.y);
+  // On a wide level the slingshot is pulled from near it; a finger anywhere else moves the camera.
+  if (CAM.wide() && (near > 2.2 || !game.canShoot())) {
+    drag = { pan: true, id: e.pointerId, sx: e.clientX, cam: CAM.x };
+  } else if (game.canShoot()) {
+    drag = { start: p, direct: near < 1.1, id: e.pointerId };
+    aim(p);
+  } else return;
   try { cv.setPointerCapture(e.pointerId); } catch (err) { /* not every webview has it */ }
 });
-cv.addEventListener("pointermove", (e) => { if (drag && e.pointerId === drag.id) { e.preventDefault(); aim(worldPoint(e)); } });
+cv.addEventListener("pointermove", (e) => {
+  if (!drag || e.pointerId !== drag.id) return;
+  e.preventDefault();
+  if (drag.pan) { CAM.x = drag.cam - (e.clientX - drag.sx) / scale; CAM.clamp(); CAM.lookedAt = performance.now() / 1000; }
+  else aim(worldPoint(e));
+});
 function release(e) {
   if (!drag || e.pointerId !== drag.id) return;
   const d = drag; drag = null;
+  if (d.pan) { CAM.lookedAt = performance.now() / 1000; return; }
   if (e.type === "pointercancel" || d.power < 0.12 || !game.canShoot()) return;
   if (game.launch(d.vx, d.vy, d.pos.x, d.pos.y)) {
     oldTrail = trail; trail = [];
@@ -775,7 +872,7 @@ function rewardLine() {
   if (!server.giveaway) return "Сейчас розыгрыша нет — играй ради удовольствия. Начнётся новый — за прохождение всех уровней дадут <b>+3 билета</b>.";
   if (server.claimed) return "✅ <b>+3 билета</b> за этот розыгрыш ты уже получил. Играй просто так!";
   if (!server.joined) return "🎟 За прохождение всех уровней дают <b>+3 билета</b>, но ты ещё не участвуешь в розыгрыше. Нажми в боте «🎁 Розыгрыш» → «Участвовать».";
-  return "🎟 Пройди все 3 уровня — получишь <b>+3 билета</b> в розыгрыше!";
+  return `🎟 Пройди все ${LEVELS.length} уровней — получишь <b>+3 билета</b> в розыгрыше!`;
 }
 
 function show(html) { $("card").innerHTML = html; $("modal").classList.remove("hidden"); paused = true; }
@@ -794,6 +891,7 @@ function welcome() {
       <li>Вредина лопается от <b>прямого попадания</b>, упавшего блока или падения с высоты.</li>
       <li><b>Стекло</b> и <b>дерево</b> ломаются, <b>камень</b> почти нет — его надо ронять.</li>
       <li>Цыплят мало. Не хватило — уровень заново.</li>
+      <li><b>Уровни 4 и 5 большие:</b> камера сама покажет крепость. Проведи пальцем по экрану, чтобы осмотреться, а рогатку тяни от цыплёнка.</li>
     </ol>
     <div class="reward">${rewardLine()}</div>
     <div class="levels">${LEVELS.map((L, i) => `<button type="button" data-i="${i}" ${i < open ? "" : "disabled"}>${i < open ? "" : "🔒 "}${i + 1}. ${L.name}</button>`).join("")}</div>
@@ -807,6 +905,7 @@ function welcome() {
 
 function startLevel(i) {
   level = i; game = new Game(i); ended = false; drag = null; trail = []; oldTrail = []; parts = []; acc = 0;
+  CAM.start();
   $("lvl").textContent = `${i + 1}/${LEVELS.length} · ${LEVELS[i].name}`;
   hide();
   api("start", i + 1);
