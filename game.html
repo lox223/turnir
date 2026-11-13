@@ -18,6 +18,13 @@
   .pill { background: rgba(255, 246, 214, .88); border-radius: 999px; padding: 6px 12px; font-weight: 700; font-size: 14px;
           box-shadow: 0 1px 0 rgba(120, 80, 0, .25); }
   .grow { flex: 1; }
+  .zoom { position: absolute; top: 52px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 6px;
+          background: rgba(255, 246, 214, .9); border-radius: 999px; padding: 4px 6px; box-shadow: 0 1px 0 rgba(120, 80, 0, .25); }
+  .zoom.hidden { display: none; }
+  .zlabel { font-size: 13px; font-weight: 700; white-space: nowrap; }
+  .zoom input { width: 120px; accent-color: #ffb300; touch-action: none; }
+  .zbtn { width: 30px; height: 30px; border: 0; border-radius: 50%; background: #ffcf33; color: #3a2600; font-size: 20px;
+          font-weight: 800; line-height: 1; padding: 0; }
   .ibtn { width: 36px; height: 36px; border: 0; border-radius: 50%; background: rgba(255, 246, 214, .88); font-size: 17px;
           color: #4a3200; box-shadow: 0 1px 0 rgba(120, 80, 0, .25); padding: 0; }
   /* The big levels are played sideways: on a phone held upright the game and its dialogs turn 90° clockwise,
@@ -58,6 +65,13 @@
     <div class="pill" id="foes">😈 0</div>
     <button class="ibtn" id="restart" aria-label="Заново">↻</button>
     <button class="ibtn" id="snd" aria-label="Звук">🔈</button>
+  </div>
+  <!-- Zoom for the big levels: a magnifier with − and + around a slider says what it does at a glance. -->
+  <div id="zoom" class="zoom hidden">
+    <button type="button" class="zbtn" id="zout" aria-label="Отдалить">−</button>
+    <label class="zlabel" for="zrange">🔍 Масштаб</label>
+    <input type="range" id="zrange" min="50" max="160" step="1" value="80" aria-label="Масштаб">
+    <button type="button" class="zbtn" id="zin" aria-label="Приблизить">+</button>
   </div>
 </div></div>
 <div id="modal"><div class="card" id="card"></div></div>
@@ -555,6 +569,8 @@ const cv = $("cv"), cx = cv.getContext("2d");
 let scale = 30, skyTop = 0, viewW = W, dpr = 1, game = null, paused = true, drag = null, trail = [], oldTrail = [], parts = [], ended = false, lastTs = 0, acc = 0;
 const BIG_VIEW_H = 9.4;       // world height a big level shows at least: its tallest tower and some sky
 const PULL_PX = 120;          // on a big level (drawn small) the full pull takes this many screen pixels of finger
+const ZOOM_MIN = 0.5, ZOOM_MAX = 1.6, ZOOM_STEP = 0.1;
+let zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, parseFloat(store.get("cb_zoom", "0.8")) || 0.8));   // big levels; remembered
 let menu = true;              // the level list is up: always upright
 let rotated = false;          // a big level on an upright phone: drawn turned 90°, the player turns the phone
 
@@ -576,8 +592,11 @@ function resize() {
   // A big level fits whole: its full width, and at least BIG_VIEW_H of height above the ground's bottom (the towers
   // and the sky over them), so there is nothing to scroll. The small ones: upright a phone sees W units across;
   // sideways it sees 10 units of height, the lower part of the sky.
-  if (!menu && game && game.width > W) scale = Math.min(vw / (game.width + 0.4), vh / BIG_VIEW_H);
+  // The player's zoom scales that: 1 is "fits exactly", less shows more around it, more zooms in (then the camera moves).
+  const big = Boolean(!menu && game && game.width > W);
+  if (big) scale = Math.min(vw / (game.width + 0.4), vh / BIG_VIEW_H) * zoom;
   else scale = Math.min(vw / W, vh / (vw > vh ? 10 : H));
+  $("zoom").classList.toggle("hidden", !big);
   skyTop = H - vh / scale;                           // the top of the screen in world units
   viewW = vw / scale;
   dpr = Math.min(window.devicePixelRatio || 1, 2.5);
@@ -929,7 +948,7 @@ function welcome() {
       <li>Вредина лопается от <b>прямого попадания</b>, упавшего блока или падения с высоты.</li>
       <li><b>Стекло</b> и <b>дерево</b> ломаются, <b>камень</b> почти нет — его надо ронять.</li>
       <li>Цыплят мало. Не хватило — уровень заново.</li>
-      <li><b>Уровни 4 и 5 большие и горизонтальные:</b> поверни телефон боком — весь уровень будет на экране. Рогатку можно тянуть из любого места экрана, натяжение там плавнее.</li>
+      <li><b>Уровни 4 и 5 большие и горизонтальные:</b> поверни телефон боком — весь уровень будет на экране. Ползунок <b>🔍 Масштаб</b> вверху приближает и отдаляет. Рогатку можно тянуть из любого места экрана, а если приблизил так, что уровень не влез, — тяни от цыплёнка и води пальцем по экрану, чтобы осмотреться.</li>
     </ol>
     <div class="reward">${rewardLine()}</div>
     <div class="levels">${LEVELS.map((L, i) => `<button type="button" data-i="${i}" ${i < open ? "" : "disabled"}>${i < open ? "" : "🔒 "}${i + 1}. ${L.name}</button>`).join("")}</div>
@@ -1005,6 +1024,21 @@ $("snd").textContent = AUDIO.isOn() ? "🔈" : "🔇";
 $("snd").addEventListener("click", () => { AUDIO.start(); $("snd").textContent = AUDIO.toggle() ? "🔈" : "🔇"; });
 
 addEventListener("resize", resize);
+
+// The zoom slider and its − / + buttons. The middle of what is on screen stays in the middle.
+function setZoom(z) {
+  zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(z * 100) / 100));
+  store.set("cb_zoom", String(zoom));
+  $("zrange").value = Math.round(zoom * 100);
+  if (!game) return;
+  const center = CAM.x + viewW / 2;
+  resize();
+  if (CAM.wide()) { CAM.intro = 0; CAM.x = center - viewW / 2; CAM.clamp(); CAM.lookedAt = performance.now() / 1000; }
+}
+$("zrange").value = Math.round(zoom * 100);
+$("zrange").addEventListener("input", (e) => setZoom(e.target.value / 100));
+$("zout").addEventListener("click", () => setZoom(zoom - ZOOM_STEP));
+$("zin").addEventListener("click", () => setZoom(zoom + ZOOM_STEP));
 if (screen.orientation) screen.orientation.addEventListener("change", resize);
 addEventListener("orientationchange", resize);
 if (inTelegram) {
