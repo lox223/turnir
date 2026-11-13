@@ -556,8 +556,17 @@ let scale = 30, skyTop = 0, viewW = W, dpr = 1, game = null, paused = true, drag
 let menu = true;              // the level list is up: always upright
 let rotated = false;          // a big level on an upright phone: drawn turned 90°, the player turns the phone
 
+// Is the phone itself upright? Asked of the device, not of the window: Telegram first opens the game in a
+// half-height sheet that can be wider than tall, and the big level must turn at once, not after it expands.
+function phoneUpright() {
+  const type = screen.orientation && screen.orientation.type;
+  if (type) return type.startsWith("portrait");
+  if (typeof window.orientation === "number") return Math.abs(window.orientation) !== 90;
+  return innerHeight > innerWidth;
+}
+
 function resize() {
-  rotated = Boolean(!menu && game && game.width > W && innerHeight > innerWidth);
+  rotated = Boolean(!menu && game && game.width > W && phoneUpright());
   document.body.classList.toggle("rot", rotated);
   const vw = rotated ? innerHeight : innerWidth, vh = rotated ? innerWidth : innerHeight;   // the game's own screen
   const st = document.body.style;
@@ -989,6 +998,8 @@ $("snd").textContent = AUDIO.isOn() ? "🔈" : "🔇";
 $("snd").addEventListener("click", () => { AUDIO.start(); $("snd").textContent = AUDIO.toggle() ? "🔈" : "🔇"; });
 
 addEventListener("resize", resize);
+if (screen.orientation) screen.orientation.addEventListener("change", resize);
+addEventListener("orientationchange", resize);
 if (inTelegram) {
   tg.ready(); tg.expand();
   if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();    // pulling the slingshot down must not close the app
