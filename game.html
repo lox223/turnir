@@ -20,6 +20,10 @@
   .grow { flex: 1; }
   .ibtn { width: 36px; height: 36px; border: 0; border-radius: 50%; background: rgba(255, 246, 214, .88); font-size: 17px;
           color: #4a3200; box-shadow: 0 1px 0 rgba(120, 80, 0, .25); padding: 0; }
+  /* The big levels are played sideways: on a phone held upright the game and its dialogs turn 90° clockwise,
+     so the player turns the phone. The sizes come from resize(). */
+  body.rot #wrap, body.rot #modal { position: fixed; inset: auto; left: 0; top: 0; width: var(--rw); height: var(--rh);
+                                     transform-origin: 0 0; transform: translateX(var(--sw)) rotate(90deg); }
   #modal { position: fixed; inset: 0; background: rgba(43, 32, 8, .62); display: flex; align-items: center;
            justify-content: center; padding: 16px; z-index: 5; }
   #modal.hidden { display: none; }
@@ -549,15 +553,31 @@ const AUDIO = (() => {
 // ---------- drawing ----------
 const cv = $("cv"), cx = cv.getContext("2d");
 let scale = 30, skyTop = 0, viewW = W, dpr = 1, game = null, paused = true, drag = null, trail = [], oldTrail = [], parts = [], ended = false, lastTs = 0, acc = 0;
+let menu = true;              // the level list is up: always upright
+let rotated = false;          // a big level on an upright phone: drawn turned 90°, the player turns the phone
 
 function resize() {
-  scale = Math.min(innerWidth / W, innerHeight / H);  // a phone always sees W units across, the rest is camera work
-  skyTop = H - innerHeight / scale;                  // a taller screen just gets more sky above
-  viewW = innerWidth / scale;
+  rotated = Boolean(!menu && game && game.width > W && innerHeight > innerWidth);
+  document.body.classList.toggle("rot", rotated);
+  const vw = rotated ? innerHeight : innerWidth, vh = rotated ? innerWidth : innerHeight;   // the game's own screen
+  const st = document.body.style;
+  st.setProperty("--rw", vw + "px"); st.setProperty("--rh", vh + "px"); st.setProperty("--sw", innerWidth + "px");
+  // Upright, a phone sees W units across and the rest is camera work. Sideways it sees 10 units of height,
+  // the lower part of the sky, so the chicks stay big and most of a big level fits at once.
+  scale = Math.min(vw / W, vh / (vw > vh ? 10 : H));
+  skyTop = H - vh / scale;                           // the top of the screen in world units
+  viewW = vw / scale;
   dpr = Math.min(window.devicePixelRatio || 1, 2.5);
-  cv.style.width = innerWidth + "px"; cv.style.height = innerHeight + "px";
-  cv.width = Math.round(innerWidth * dpr); cv.height = Math.round(innerHeight * dpr);
+  cv.style.width = vw + "px"; cv.style.height = vh + "px";
+  cv.width = Math.round(vw * dpr); cv.height = Math.round(vh * dpr);
   CAM.clamp();
+}
+
+// A touch in the game's own screen pixels: turned back when the game is drawn turned.
+function screenPoint(e) {
+  if (rotated) return { x: e.clientY, y: innerWidth - e.clientX };
+  const r = cv.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
 }
 
 // ---------- camera: a wide level is shown a screen at a time ----------
@@ -761,8 +781,9 @@ function draw(t) {
     for (let i = 0; i < list.length; i++) { cx.beginPath(); cx.arc(list[i].x, list[i].y, 0.045 + (i % 3) * 0.012, 0, 7); cx.fill(); }
   }
 
-  const loaded = game.canShoot() || (drag && game.birdsLeft > 0);
-  const pos = drag ? drag.pos : loaded ? ANCHOR : null;
+  const aiming = drag && !drag.pan;                  // a finger moving the camera doesn't hold the chick
+  const loaded = game.canShoot() || (aiming && game.birdsLeft > 0);
+  const pos = aiming ? drag.pos : loaded ? ANCHOR : null;
   drawSling(false, pos);
   for (const b of game.blocks) drawBlock(b);
   for (const b of game.foes) drawFoe(b, t);
@@ -770,10 +791,10 @@ function draw(t) {
   // the chicks still waiting, in a line behind the slingshot
   const waiting = game.birdsLeft - (loaded ? 1 : 0), gap = waiting > 2 ? Math.min(0.62, 1.5 / (waiting - 1)) : 0.62;
   for (let i = waiting - 1; i >= 0; i--) drawBird(1.2 - i * gap, GROUND - BIRD.r - Math.abs(Math.sin(t * 2.2 + i * 1.7)) * 0.07, 0, BIRD.r * 0.92);
-  if (pos) drawBird(pos.x, pos.y, drag ? Math.atan2(ANCHOR.y - pos.y, ANCHOR.x - pos.x) : 0, BIRD.r, 1);
+  if (pos) drawBird(pos.x, pos.y, aiming ? Math.atan2(ANCHOR.y - pos.y, ANCHOR.x - pos.x) : 0, BIRD.r, 1);
   drawSling(true, pos);
 
-  if (drag && drag.power > 0.12) {                   // where the flight begins; the rest is for the player to judge
+  if (aiming && drag.power > 0.12) {                   // where the flight begins; the rest is for the player to judge
     cx.fillStyle = "rgba(90, 50, 0, .55)";
     for (let i = 1; i <= 9; i++) {
       const s = i * 0.075;
@@ -808,8 +829,8 @@ function frame(ts) {
 
 // ---------- input: pull the chick back and let go ----------
 function worldPoint(e) {
-  const r = cv.getBoundingClientRect();
-  return { x: (e.clientX - r.left) / scale + CAM.x, y: (e.clientY - r.top) / scale + skyTop };
+  const p = screenPoint(e);
+  return { x: p.x / scale + CAM.x, y: p.y / scale + skyTop };
 }
 function aim(p) {
   // Near the chick the finger holds it; anywhere else the drag is relative, so a thumb doesn't have to cover it.
@@ -829,7 +850,7 @@ cv.addEventListener("pointerdown", (e) => {
   const p = worldPoint(e), near = Math.hypot(p.x - ANCHOR.x, p.y - ANCHOR.y);
   // On a wide level the slingshot is pulled from near it; a finger anywhere else moves the camera.
   if (CAM.wide() && (near > 2.2 || !game.canShoot())) {
-    drag = { pan: true, id: e.pointerId, sx: e.clientX, cam: CAM.x };
+    drag = { pan: true, id: e.pointerId, sx: screenPoint(e).x, cam: CAM.x };
   } else if (game.canShoot()) {
     drag = { start: p, direct: near < 1.1, id: e.pointerId };
     aim(p);
@@ -839,7 +860,7 @@ cv.addEventListener("pointerdown", (e) => {
 cv.addEventListener("pointermove", (e) => {
   if (!drag || e.pointerId !== drag.id) return;
   e.preventDefault();
-  if (drag.pan) { CAM.x = drag.cam - (e.clientX - drag.sx) / scale; CAM.clamp(); CAM.lookedAt = performance.now() / 1000; }
+  if (drag.pan) { CAM.x = drag.cam - (screenPoint(e).x - drag.sx) / scale; CAM.clamp(); CAM.lookedAt = performance.now() / 1000; }
   else aim(worldPoint(e));
 });
 function release(e) {
@@ -879,6 +900,7 @@ function show(html) { $("card").innerHTML = html; $("modal").classList.remove("h
 function hide() { $("modal").classList.add("hidden"); paused = false; }
 
 function welcome() {
+  menu = true; resize();                             // the level list is read upright
   const open = unlocked();
   let pick = Math.min(open, LEVELS.length) - 1;
   show(`
@@ -891,7 +913,7 @@ function welcome() {
       <li>Вредина лопается от <b>прямого попадания</b>, упавшего блока или падения с высоты.</li>
       <li><b>Стекло</b> и <b>дерево</b> ломаются, <b>камень</b> почти нет — его надо ронять.</li>
       <li>Цыплят мало. Не хватило — уровень заново.</li>
-      <li><b>Уровни 4 и 5 большие:</b> камера сама покажет крепость. Проведи пальцем по экрану, чтобы осмотреться, а рогатку тяни от цыплёнка.</li>
+      <li><b>Уровни 4 и 5 большие и горизонтальные:</b> поверни телефон боком. Камера сама покажет крепость, проведи пальцем по экрану, чтобы осмотреться, а рогатку тяни от цыплёнка.</li>
     </ol>
     <div class="reward">${rewardLine()}</div>
     <div class="levels">${LEVELS.map((L, i) => `<button type="button" data-i="${i}" ${i < open ? "" : "disabled"}>${i < open ? "" : "🔒 "}${i + 1}. ${L.name}</button>`).join("")}</div>
@@ -905,6 +927,7 @@ function welcome() {
 
 function startLevel(i) {
   level = i; game = new Game(i); ended = false; drag = null; trail = []; oldTrail = []; parts = []; acc = 0;
+  menu = false; resize();                            // a big level turns the screen sideways
   CAM.start();
   $("lvl").textContent = `${i + 1}/${LEVELS.length} · ${LEVELS[i].name}`;
   hide();
