@@ -64,6 +64,35 @@
   .tabs button { flex: 1; padding: 10px; border: 0; border-radius: 9px; background: transparent; color: var(--hint);
                  font-size: 15px; font-weight: 600; }
   .tabs button.on { background: var(--accent); color: var(--accent-text); }
+  .progress-hero { position: relative; overflow: hidden; padding: 16px; margin-bottom: 12px; border-radius: 16px;
+                   background: radial-gradient(110% 120% at 92% -12%, rgba(255, 209, 83, .42), transparent 58%),
+                               linear-gradient(135deg, #2b2848, #192d43); box-shadow: inset 0 0 0 1px rgba(255, 220, 133, .22); }
+  .progress-hero::after { content: ""; position: absolute; width: 150px; height: 150px; right: -48px; bottom: -68px; border-radius: 50%;
+                          background: radial-gradient(circle, rgba(255, 211, 82, .36), transparent 67%); pointer-events: none; }
+  .p-label { position: relative; color: #d6d1ee; font-size: 12px; text-transform: uppercase; letter-spacing: .07em; }
+  .p-tickets { position: relative; margin-top: 3px; font-size: 36px; font-weight: 800; letter-spacing: -.04em; }
+  .p-tickets span { font-size: 15px; font-weight: 600; letter-spacing: 0; color: #fff0b3; }
+  .p-chance { position: relative; margin-top: 5px; color: #f4f2ff; font-size: 14px; }
+  .p-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 12px 0; }
+  .p-stat { padding: 12px; border-radius: 13px; background: var(--card); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .045); }
+  .p-stat b { display: block; margin-top: 2px; font-size: 18px; color: var(--accent); }
+  .p-stat span { font-size: 12px; color: var(--hint); }
+  .p-section { margin: 16px 0 8px; font-size: 16px; font-weight: 700; }
+  .p-list { overflow: hidden; border-radius: 14px; background: var(--card); }
+  .p-row { display: flex; gap: 10px; align-items: center; min-height: 53px; padding: 10px 12px; border-bottom: 1px solid rgba(255, 255, 255, .055); }
+  .p-row:last-child { border-bottom: 0; }
+  .p-row.done { opacity: .62; }
+  .p-ico { flex: none; width: 29px; font-size: 20px; text-align: center; }
+  .p-copy { min-width: 0; flex: 1; }
+  .p-title { font-size: 14px; font-weight: 600; }
+  .p-sub { margin-top: 1px; font-size: 12px; color: var(--hint); }
+  .p-check { flex: none; color: #80e7a0; font-size: 18px; }
+  .p-claim { flex: none; padding: 7px 9px; border: 0; border-radius: 9px; background: var(--accent); color: var(--accent-text); font-size: 12px; font-weight: 700; }
+  .p-claim:disabled { opacity: .48; }
+  .p-chest { margin: 10px 0 4px; padding: 12px; border-radius: 13px; font-size: 14px; background: rgba(245, 166, 35, .12); color: #fff0bd; box-shadow: inset 0 0 0 1px rgba(245, 166, 35, .26); }
+  .p-empty { padding: 18px 14px; border-radius: 14px; background: var(--card); color: var(--hint); text-align: center; }
+  .p-refresh { display: block; width: 100%; margin: 12px 0 4px; padding: 12px; border: 1px solid rgba(245, 166, 35, .65); border-radius: 12px;
+               background: transparent; color: var(--accent); font-size: 14px; font-weight: 700; }
   .game-link { display: block; margin: -6px 0 16px; padding: 12px 14px; border-radius: 12px; text-align: center;
                background: linear-gradient(90deg, #ffcf33, #ffb300); color: #3a2600; font-weight: 700; font-size: 15px;
                text-decoration: none; }
@@ -93,10 +122,12 @@
   #take { margin-top: 12px; width: 100%; padding: 13px; border: 0; border-radius: 12px; background: #4b69ff;
           color: #fff; font-size: 16px; font-weight: 700; }
   /* The roulette: a strip of cards that slides under the yellow line and stops on the prize. */
-  .roll { position: relative; overflow: hidden; border-radius: 14px; background: #24222e; padding: 12px 0;
-          margin-bottom: 12px;
-          box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .05), inset 0 10px 22px rgba(0, 0, 0, .28),
-                      inset 0 -10px 22px rgba(0, 0, 0, .22); }
+  .roll { position: relative; overflow: hidden; border-radius: 14px; background: linear-gradient(180deg, #302d3e, #201f2a 34%, #24222e);
+          padding: 12px 0; margin-bottom: 12px; border: 1px solid rgba(255, 224, 138, .16);
+          box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .035), inset 0 16px 28px rgba(255, 231, 161, .05),
+                      inset 0 -18px 30px rgba(0, 0, 0, .38), 0 8px 22px rgba(0, 0, 0, .18); }
+  .roll.spinning { box-shadow: inset 0 0 0 1px rgba(255, 223, 135, .32), inset 0 16px 28px rgba(255, 231, 161, .1),
+                   inset 0 -18px 30px rgba(0, 0, 0, .42), 0 0 24px rgba(245, 184, 55, .18); }
   .roll::before, .roll::after { content: ""; position: absolute; top: 0; bottom: 0; width: 56px; z-index: 2;
                                 pointer-events: none; }
   .roll::before { left: 0; background: linear-gradient(90deg, #24222e, transparent); }
@@ -112,9 +143,12 @@
   @keyframes winPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.07); } }
   /* the line the strip stops under, with a little arrow at both ends */
   .roll-marker { position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; margin-left: -1px; z-index: 3;
-                 pointer-events: none;
-                 background: linear-gradient(180deg, #ffe08a, #e4ae39 50%, #ffe08a);
+                 pointer-events: none; transform-origin: 50% 50%;
+                 background: linear-gradient(180deg, #fff0ad, #e4ae39 50%, #fff0ad);
                  box-shadow: 0 0 12px rgba(255, 200, 70, .85); }
+  .roll.spinning .roll-marker { animation: rollMarker .42s ease-in-out infinite alternate; }
+  @keyframes rollMarker { from { opacity: .72; transform: scaleY(.92); box-shadow: 0 0 8px rgba(255, 200, 70, .52); }
+                            to { opacity: 1; transform: scaleY(1.04); box-shadow: 0 0 21px rgba(255, 214, 102, .96); } }
   .roll-marker::before, .roll-marker::after { content: ""; position: absolute; left: 50%; margin-left: -7px;
                                               border: 7px solid transparent; }
   .roll-marker::before { top: 0; border-top-color: #ffd45a; border-bottom-width: 0; }
@@ -126,7 +160,7 @@
          background: var(--card); color: var(--text); font-size: 18px; line-height: 1; cursor: pointer; }
   .snd:active { transform: scale(.94); }
   @media (prefers-reduced-motion: reduce) {
-    .item.top::after, .roll .item.win { animation: none; }
+    .item.top::after, .roll .item.win, .roll.spinning .roll-marker { animation: none; }
   }
   .result { text-align: center; background: var(--card); border-radius: 14px; padding: 14px; margin-bottom: 12px;
             font-size: 15px; }
@@ -397,9 +431,33 @@
 <button type="button" id="live-pill" class="hidden">🔴 Эфир</button>
 <main>
   <nav class="tabs">
-    <button type="button" data-tab="tourney" class="on">🏟 Турнир</button>
+    <button type="button" data-tab="progress" class="on">🎯 Билеты</button>
     <button type="button" data-tab="case">💎 Кейс</button>
+    <button type="button" data-tab="tourney">🏟 Турнир</button>
   </nav>
+  <section id="tab-progress">
+    <h1>🎯 Билеты и шансы</h1>
+    <div class="sub">Выполняй бесплатные действия, забирай награды и следи за шансом в розыгрыше.</div>
+    <div id="progress-loading" class="p-empty">Загружаем твой прогресс…</div>
+    <div id="progress-offline" class="p-empty hidden"></div>
+    <div id="progress-content" class="hidden">
+      <div class="progress-hero">
+        <div class="p-label" id="p-prize">Текущий розыгрыш</div>
+        <div class="p-tickets"><span id="p-tickets">0</span> <span>билетов</span></div>
+        <div class="p-chance" id="p-chance"></div>
+      </div>
+      <div class="p-grid">
+        <div class="p-stat"><span>👥 Друзья</span><b id="p-friends">0</b></div>
+        <div class="p-stat"><span>🔥 Серия кейса</span><b id="p-streak">0 дн.</b></div>
+      </div>
+      <div class="p-section">📅 Сегодня</div>
+      <div class="p-list" id="p-daily"></div>
+      <div class="p-chest" id="p-chest"></div>
+      <div class="p-section" id="p-week-title">🗓 Неделя</div>
+      <div class="p-list" id="p-weekly"></div>
+      <button type="button" id="p-refresh" class="p-refresh">🔄 Обновить прогресс</button>
+    </div>
+  </section>
   <!-- The slingshot game lives on its own page (game.html); the query goes along so it keeps the bot's address. -->
   <a id="game-link" class="game-link" href="game.html">🐥 Играть в «Цыпа-бум» <span>+3 билета за прохождение</span></a>
 
@@ -636,7 +694,7 @@
   ITEMS.forEach((it) => { if (it.img) new Image().src = it.img + "?v=2"; });
 
   // The strip: random cards (weighted like the case) with the prize at WIN; it slides so WIN stops under the line.
-  const CARD_W = 110 + 8, STRIP = 50, WIN = 42;
+  const CARD_W = 110 + 8, STRIP = 56, WIN = 48;
   function weighted() {
     let r = Math.random() * 100;
     return ITEMS.find((it) => (r -= it.chance) < 0) || ITEMS[0];
@@ -688,17 +746,23 @@
     function drawCoin(p) {
       const sx = Math.cos(p.ph);
       const w = Math.max(.12, Math.abs(sx));
+      const depth = Math.max(1.5, p.size * .3);
       ctx.save();
       ctx.translate(p.x, p.y);
       ctx.scale(w, 1);
-      const g = ctx.createLinearGradient(-p.size, -p.size, p.size, p.size);
-      g.addColorStop(0, "#fff1a8"); g.addColorStop(.5, "#ffc93c"); g.addColorStop(1, "#c98a12");
-      ctx.beginPath(); ctx.arc(0, 0, p.size, 0, 6.2832);
-      ctx.fillStyle = g; ctx.fill();
-      ctx.lineWidth = Math.max(1, p.size * .16); ctx.strokeStyle = "#a8700a"; ctx.stroke();
+      ctx.shadowColor = "rgba(0, 0, 0, .38)"; ctx.shadowBlur = p.size * .65; ctx.shadowOffsetY = p.size * .48;
+      ctx.beginPath(); ctx.arc(0, depth, p.size, 0, 6.2832); ctx.fillStyle = "#9d6208"; ctx.fill();
+      ctx.shadowColor = "transparent";
+      const face = ctx.createRadialGradient(-p.size * .35, -p.size * .45, p.size * .08, 0, 0, p.size * 1.08);
+      face.addColorStop(0, "#fff8c9"); face.addColorStop(.23, "#ffe47d"); face.addColorStop(.62, "#ffc23a"); face.addColorStop(1, "#b97208");
+      ctx.beginPath(); ctx.arc(0, 0, p.size, 0, 6.2832); ctx.fillStyle = face; ctx.fill();
+      ctx.lineWidth = Math.max(1, p.size * .16); ctx.strokeStyle = "#9e6208"; ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, 0, p.size * .71, 0, 6.2832); ctx.lineWidth = Math.max(.7, p.size * .07); ctx.strokeStyle = "rgba(255, 249, 190, .8)"; ctx.stroke();
+      ctx.beginPath(); ctx.arc(-p.size * .22, -p.size * .3, p.size * .48, Math.PI * 1.05, Math.PI * 1.72);
+      ctx.lineWidth = Math.max(.8, p.size * .1); ctx.strokeStyle = "rgba(255, 255, 255, .72)"; ctx.stroke();
       if (w > .45) {  // the "₽" is only readable while the coin faces us
-        ctx.fillStyle = "#8a5400";
-        ctx.font = `800 ${Math.round(p.size * 1.15)}px -apple-system, "Segoe UI", Roboto, sans-serif`;
+        ctx.fillStyle = "#8a5100";
+        ctx.font = `800 ${Math.round(p.size * 1.1)}px -apple-system, "Segoe UI", Roboto, sans-serif`;
         ctx.textAlign = "center"; ctx.textBaseline = "middle";
         ctx.fillText("₽", 0, p.size * .06);
       }
@@ -855,14 +919,16 @@
     $("spin-note").textContent = "";
     $("result").classList.add("hidden");
     $("roll").classList.remove("done");
+    $("roll").classList.add("spinning");
     FX.clear();
     fillStrip(win);
     slideTo(3, 0);
     $("track").offsetWidth;  // apply the start position before the slide
-    setTimeout(() => { slideTo(WIN, 6); tickWhileSliding(6000); SFX.play("roll", 0.3); }, 300);   // the file has 0.3 s of lead-in
+    setTimeout(() => { slideTo(WIN, 6.5); tickWhileSliding(6500); SFX.play("roll", 0.3); }, 300);   // the file has 0.3 s of lead-in
     setTimeout(() => {
       const winCard = $("track").children[WIN];
       winCard.classList.add("win");
+      $("roll").classList.remove("spinning");
       $("roll").classList.add("done");
       const box = winCard.getBoundingClientRect();
       FX.win(box.left + box.width / 2, box.top + box.height / 2, win.rarity, TIER[win.code] ?? 0);
@@ -886,7 +952,7 @@
         $("result").appendChild(take);
       }
       if (done) done();
-    }, 6500);
+    }, 7000);
   }
 
   // The page asks the bot directly (through the ngrok tunnel) and the strip stops on the prize here.
@@ -905,6 +971,78 @@
     return DEFAULT_API;
   })();
   const live = Boolean(inTelegram && tg.initData);
+
+  // Signed personal progress: the bot keeps all balances and only the page renders them.
+  const PROGRESS = (() => {
+    const loading = $("progress-loading"), offline = $("progress-offline"), content = $("progress-content");
+    let busy = false, loaded = false;
+    const clear = (id) => { while ($(id).firstChild) $(id).removeChild($(id).firstChild); };
+    function setOffline(text) {
+      loading.classList.add("hidden"); content.classList.add("hidden");
+      offline.textContent = text; offline.classList.remove("hidden");
+    }
+    function makeRow(icon, title, sub, done) {
+      const row = document.createElement("div"); row.className = "p-row" + (done ? " done" : "");
+      const ico = document.createElement("div"); ico.className = "p-ico"; ico.textContent = done ? "✅" : icon;
+      const copy = document.createElement("div"); copy.className = "p-copy";
+      const head = document.createElement("div"); head.className = "p-title"; head.textContent = title;
+      const detail = document.createElement("div"); detail.className = "p-sub"; detail.textContent = sub;
+      copy.append(head, detail); row.append(ico, copy);
+      return row;
+    }
+    function render(data) {
+      loading.classList.add("hidden"); offline.classList.add("hidden");
+      if (!data.giveaway || !data.giveaway.active) {
+        setOffline("Сейчас активного розыгрыша нет. Когда он появится, здесь будут твои билеты и задания.");
+        return;
+      }
+      content.classList.remove("hidden"); loaded = true;
+      $("p-prize").textContent = "🎁 " + data.giveaway.prize;
+      $("p-tickets").textContent = data.giveaway.tickets;
+      $("p-chance").textContent = data.giveaway.chance ? "Твой " + data.giveaway.chance.replace(/<[^>]*>/g, "") : "Участвуй в розыгрыше, чтобы копить билеты.";
+      $("p-friends").textContent = data.giveaway.friends + " × 3";
+      $("p-streak").textContent = data.streak.days + " дн.";
+      clear("p-daily");
+      data.daily.forEach((task) => $("p-daily").appendChild(makeRow("⬜", task.title, task.done ? "Готово" : "Выполни сегодня", task.done)));
+      const shield = data.streak.save_ready ? "🛡 Щит сохранит серию после одного пропуска." : data.streak.save_left ? `🛡 Следующий щит через ${data.streak.save_left} дн.` : "🛡 Щит серии готов.";
+      $("p-daily").appendChild(makeRow("🛡", "Защита серии", shield, false));
+      const chest = data.chest;
+      $("p-chest").textContent = chest.done ? `📦 Сундук на сегодня открыт: +${chest.tickets} 🎟` : chest.ready
+        ? `📦 Все задания выполнены — сундук +${chest.tickets} 🎟 ждёт в боте.`
+        : `📦 Выполни все ежедневные задания и забери +${chest.tickets} 🎟.`;
+      $("p-week-title").textContent = "🗓 Неделя с " + data.week_start.slice(8, 10) + "." + data.week_start.slice(5, 7);
+      clear("p-weekly");
+      data.weekly.forEach((task) => {
+        const row = makeRow(task.emoji, task.title, task.claimed ? "Награда получена" : `${task.value}/${task.goal} · +${task.tickets} 🎟`, task.claimed);
+        if (task.ready) {
+          const claim = document.createElement("button"); claim.type = "button"; claim.className = "p-claim"; claim.textContent = `+${task.tickets} 🎟`;
+          claim.addEventListener("click", async () => { claim.disabled = true; await request("claim", task.code); });
+          row.appendChild(claim);
+        } else if (task.claimed) {
+          const check = document.createElement("div"); check.className = "p-check"; check.textContent = "✓"; row.appendChild(check);
+        }
+        $("p-weekly").appendChild(row);
+      });
+    }
+    async function request(action = "state", code = "") {
+      if (busy) return;
+      if (!live) { setOffline(inTelegram ? "Открой приложение кнопкой в боте — так Telegram подтвердит твой аккаунт." : "Открой этот раздел из бота в Telegram, чтобы увидеть личный прогресс."); return; }
+      busy = true;
+      try {
+        const response = await fetch(API.replace(/\/$/, "") + "/api/progress", {
+          method: "POST", headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" },
+          body: JSON.stringify({ initData: tg.initData, action, code }),
+        });
+        const data = await response.json();
+        if (data.error) setOffline(data.error);
+        else render(data);
+      } catch (e) {
+        setOffline("Не получилось загрузить прогресс. Проверь соединение и попробуй ещё раз.");
+      } finally { busy = false; }
+    }
+    $("p-refresh").addEventListener("click", () => request());
+    return { refresh() { if (!loaded || !content.classList.contains("hidden")) request(); } };
+  })();
 
   // Every read from the bot goes through here. timeoutMs > 0 aborts a request that hangs (the tunnel is reconnecting,
   // the app sat in the background): without it one hung request froze the live strip and the shake card until a reload.
@@ -1193,12 +1331,17 @@
             ctx.restore();
           } else if (p.k === "m") {
             p.life += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.ph += p.vph * dt;
-            const w = Math.max(.14, Math.abs(Math.cos(p.ph)));
+            const w = Math.max(.14, Math.abs(Math.cos(p.ph))), depth = Math.max(1.4, p.size * .28);
             ctx.save(); ctx.translate(p.x, p.y); ctx.scale(w, 1);
-            const g = ctx.createLinearGradient(-p.size, -p.size, p.size, p.size);
-            g.addColorStop(0, "#fff1a8"); g.addColorStop(.5, "#ffc93c"); g.addColorStop(1, "#c98a12");
+            ctx.shadowColor = "rgba(0,0,0,.35)"; ctx.shadowBlur = p.size * .55; ctx.shadowOffsetY = p.size * .42;
+            ctx.beginPath(); ctx.arc(0, depth, p.size, 0, 6.2832); ctx.fillStyle = "#9d6208"; ctx.fill();
+            ctx.shadowColor = "transparent";
+            const g = ctx.createRadialGradient(-p.size * .35, -p.size * .45, p.size * .08, 0, 0, p.size * 1.08);
+            g.addColorStop(0, "#fff8c9"); g.addColorStop(.24, "#ffe47d"); g.addColorStop(.65, "#ffc23a"); g.addColorStop(1, "#b97208");
             ctx.beginPath(); ctx.arc(0, 0, p.size, 0, 6.2832); ctx.fillStyle = g; ctx.fill();
-            ctx.lineWidth = 1.2; ctx.strokeStyle = "#a8700a"; ctx.stroke();
+            ctx.lineWidth = 1.2; ctx.strokeStyle = "#9e6208"; ctx.stroke();
+            ctx.beginPath(); ctx.arc(0, 0, p.size * .7, 0, 6.2832); ctx.lineWidth = .8; ctx.strokeStyle = "rgba(255,249,190,.78)"; ctx.stroke();
+            if (w > .46) { ctx.fillStyle = "#8a5100"; ctx.font = `800 ${Math.round(p.size * 1.05)}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("₽", 0, p.size * .05); }
             ctx.restore();
           }
         }
@@ -1754,20 +1897,22 @@
 
   function showTab(name) {
     document.querySelectorAll(".tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === name));
+    $("tab-progress").classList.toggle("hidden", name !== "progress");
     $("tab-case").classList.toggle("hidden", name !== "case");
     $("tab-tourney").classList.toggle("hidden", name !== "tourney");
     $("note").textContent = "";
-    // The case has its own button on the page; Telegram's bottom button is only for the tournament form.
+    // The case and progress tabs have their own controls; Telegram's bottom button is only for the tournament form.
     if (inTelegram) {
-      if (name === "case") {
-        tg.MainButton.hide();
-      } else {
+      if (name === "tourney") {
         tg.MainButton.setText("Зарегистрировать команду");
         tg.MainButton.show();
+      } else {
+        tg.MainButton.hide();
       }
     }
     window.scrollTo(0, 0);
     if (name === "case") { SFX.load(); FEED.start(); SHAKE.refresh(); } else { FEED.stop(); }
+    if (name === "progress") PROGRESS.refresh();
   }
   document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
   $("game-link").href = "game.html" + location.search;
@@ -1780,7 +1925,7 @@
     $("send").classList.remove("hidden");
   }
   const roll = location.hash.match(/^#roll=(\w+)/);
-  showTab(roll || location.hash === "#case" ? "case" : "tourney");
+  showTab(roll || location.hash === "#case" ? "case" : location.hash === "#tourney" ? "tourney" : "progress");
   if (roll) replay(roll[1]);
   LIVE.start();
 </script>
