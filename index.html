@@ -455,6 +455,8 @@
       <div class="p-chest" id="p-chest"></div>
       <div class="p-section" id="p-week-title">🗓 Неделя</div>
       <div class="p-list" id="p-weekly"></div>
+      <div class="p-section">🎟 Откуда билеты</div>
+      <div class="p-list" id="p-ledger"></div>
       <button type="button" id="p-refresh" class="p-refresh">🔄 Обновить прогресс</button>
     </div>
   </section>
@@ -1023,6 +1025,14 @@
         }
         $("p-weekly").appendChild(row);
       });
+      const sources = [["🎉", "Участие", data.ledger.join], ["👥", "Друзья", data.ledger.friends],
+                       ["🎰", "Кейсы", data.ledger.case], ["🧠", "Викторина", data.ledger.quiz],
+                       ["📦", "Сундук", data.ledger.chest], ["🐥", "Цыпа-бум", data.ledger.game],
+                       ["🗓", "Недельные награды", data.ledger.weekly]];
+      clear("p-ledger");
+      sources.filter(([, , value]) => value).forEach(([icon, title, value]) =>
+        $("p-ledger").appendChild(makeRow(icon, title, (value > 0 ? "+" : "") + value + " 🎟", false)));
+      if (!$("p-ledger").children.length) $("p-ledger").appendChild(makeRow("🎟", "Пока только участие", "Выполняй задания, чтобы увеличить шанс.", false));
     }
     async function request(action = "state", code = "") {
       if (busy) return;
