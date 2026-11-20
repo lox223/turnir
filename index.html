@@ -755,7 +755,7 @@
   function slideTo(index, seconds, jitter = 0) {
     const center = $("roll").clientWidth / 2;
     const x = index * CARD_W + 55 - center + (Math.random() - .5) * jitter;
-    $("track").style.transition = seconds ? `transform ${seconds}s cubic-bezier(.12, .78, .12, 1)` : "none";
+    $("track").style.transition = seconds ? `transform ${seconds}s cubic-bezier(.08, .6, .12, 1)` : "none";
     $("track").style.transform = `translateX(${-x}px)`;
   }
   fillStrip(null);
@@ -952,13 +952,10 @@
     slideTo(3, 0);
     $("track").offsetWidth;
     setTimeout(() => {
-      slideTo(WIN - 7, 3.9, 12);
-      tickWhileSliding(6600);
+      slideTo(WIN, 6.5, 16);
+      tickWhileSliding(6500);
       SFX.play("roll", 0.3);
-      setTimeout(() => {
-        $("roll").classList.add("slowing");
-        slideTo(WIN, 2.7, 8);
-      }, 3950);
+      setTimeout(() => $("roll").classList.add("slowing"), 5100);
     }, 300);
     setTimeout(() => {
       const winCard = $("track").children[WIN];
