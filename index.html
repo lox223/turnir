@@ -2003,7 +2003,7 @@
     else video.addEventListener("loadedmetadata", cuePosterFrame, { once: true });
     start.addEventListener("click", () => {
       start.disabled = true;
-      cuePosterFrame();
+      video.currentTime = 0;
       video.muted = false;
       video.volume = 1;
       video.play().then(() => {
