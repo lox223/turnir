@@ -382,11 +382,12 @@
   #lv-res .row { padding: 5px 0; } #lv-res b { color: #ffd45a; }
   #lv-proof { margin-top: 8px; font-size: 11px; color: #8b9aab; word-break: break-all; }
   #live-pill { position: fixed; right: 12px; bottom: 14px; z-index: 1999; background: #e0352b; color: #fff; border: 0; border-radius: 999px; padding: 10px 16px; font: 700 14px inherit; box-shadow: 0 6px 18px rgba(0,0,0,.4); }
-  #splash { position: fixed; inset: 0; z-index: 3000; overflow: hidden; background: #06080d; opacity: 1; transition: opacity .26s ease; }
+  #splash { position: fixed; inset: 0; z-index: 3000; overflow: hidden; background: #06080d; opacity: 1; transition: opacity .7s cubic-bezier(.32, .08, .28, 1); }
   #splash.leaving { opacity: 0; pointer-events: none; }
-  #splash-poster, #splash-video { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+  #splash-poster, #splash-video, #splash .splash-last-frame { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
   #splash-poster { z-index: 2; }
   #splash-video { z-index: 1; }
+  #splash .splash-last-frame { z-index: 2; pointer-events: none; }
   #splash-start { position: absolute; z-index: 3; inset: 0; display: block; padding: 0; border: 0; border-radius: 0; background: transparent; }
   #splash-start .splash-play { position: absolute; right: max(28px, env(safe-area-inset-right)); bottom: max(42px, calc(env(safe-area-inset-bottom) + 20px)); width: 0; height: 0; border-top: 18px solid transparent; border-bottom: 18px solid transparent; border-left: 29px solid #ffcf28; filter: drop-shadow(0 0 6px rgba(255,240,135,.95)) drop-shadow(0 0 16px rgba(255,190,0,.85)) drop-shadow(0 5px 10px rgba(0,0,0,.5)); }
   #splash-start:focus-visible { outline: 2px solid #fff0a3; outline-offset: -8px; }
@@ -2115,9 +2116,41 @@
     function close() {
       if (closed) return;
       closed = true;
-      video.pause();
+
+      if (reduceRoll) {
+        splash.remove();
+        resolve();
+        return;
+      }
+
+      // Keep the decoded frame visible while the WebView fades the overlay.
+      if (video.videoWidth && video.videoHeight && video.readyState >= 2) {
+        try {
+          const frame = document.createElement("canvas");
+          frame.className = "splash-last-frame";
+          frame.setAttribute("aria-hidden", "true");
+          frame.width = video.videoWidth;
+          frame.height = video.videoHeight;
+          const context = frame.getContext("2d");
+          if (context) {
+            context.drawImage(video, 0, 0);
+            splash.appendChild(frame);
+          }
+        } catch (e) { /* The video itself remains visible if a frame cannot be copied. */ }
+      }
+
+      const finish = () => {
+        clearTimeout(fallback);
+        splash.removeEventListener("transitionend", onFade);
+        splash.remove();
+        resolve();
+      };
+      const onFade = event => {
+        if (event.target === splash && event.propertyName === "opacity") finish();
+      };
+      const fallback = setTimeout(finish, 850);
+      splash.addEventListener("transitionend", onFade);
       splash.classList.add("leaving");
-      setTimeout(() => { splash.remove(); resolve(); }, reduceRoll ? 0 : 280);
     }
     video.addEventListener("playing", () => {
       poster.remove();
