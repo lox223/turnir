@@ -162,6 +162,34 @@
   .roll .item { transition: opacity .15s ease, transform .15s ease; }
   .roll .item.win { z-index: 1; box-shadow: 0 0 0 2px #ffd45a inset, 0 0 16px rgba(255, 200, 70, .48); }
   .roll.done .item:not(.win) { opacity: .3; }
+  .reel-glint { position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0;
+                background: linear-gradient(108deg, transparent 39%, var(--drop-aura, #ffcf6240) 49%, transparent 61%); }
+  .roll.opening .reel-glint { animation: reel-unlock .32s ease-out both; }
+  @keyframes reel-unlock { 0% { opacity: 0; transform: translateX(-76%); }
+                           38% { opacity: .85; } 100% { opacity: 0; transform: translateX(74%); } }
+  [data-drop="tickets"] { --drop-edge: #c2d1de; --drop-aura: #a9bdce29; }
+  [data-drop="common"] { --drop-edge: #94c4ff; --drop-aura: #79a7fb54; }
+  [data-drop="rare"] { --drop-edge: #d1a6ff; --drop-aura: #bb83ff69; }
+  [data-drop="epic"] { --drop-edge: #ff9bdf; --drop-aura: #ff7dcc6b; }
+  [data-drop="top"] { --drop-edge: #ffe29d; --drop-aura: #ffb84880; }
+  .roll.done[data-drop] { border-color: var(--drop-edge); }
+  .roll.done[data-drop] .item.win {
+    box-shadow: inset 0 0 0 1.5px var(--drop-edge), 0 0 20px var(--drop-aura);
+  }
+  .roll[data-drop="tickets"] .item.win { animation: prize-quiet .25s ease-out; }
+  .roll[data-drop="common"] .item.win { animation: prize-lift .48s cubic-bezier(.22,.73,.22,1); }
+  .roll[data-drop="rare"] .item.win, .roll[data-drop="epic"] .item.win, .roll[data-drop="top"] .item.win {
+    animation: prize-impact .72s cubic-bezier(.18,.65,.22,1);
+  }
+  .roll[data-drop="rare"] .reel-glint, .roll[data-drop="epic"] .reel-glint, .roll[data-drop="top"] .reel-glint {
+    animation: reel-unlock .68s ease-out both;
+  }
+  @keyframes prize-quiet { 0% { transform: scale(.97); } 100% { transform: scale(1); } }
+  @keyframes prize-lift { 0% { transform: scale(.96); } 44% { transform: translateY(-2px) scale(1.035); } 100% { transform: scale(1); } }
+  @keyframes prize-impact {
+    0% { transform: scale(.96); } 29% { transform: translateY(-3px) scale(1.065); }
+    64% { transform: translateY(1px) scale(.995); } 100% { transform: scale(1); }
+  }
   /* the line the strip stops under, with a little arrow at both ends */
   .roll-marker { position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; margin-left: -1px; z-index: 3;
                  pointer-events: none; transform-origin: 50% 50%;
@@ -185,10 +213,13 @@
   @media (prefers-reduced-motion: reduce) {
     .item.top::after { animation: none; }
     .roll .item { transition: none; }
+    .roll.opening .reel-glint, .roll.done[data-drop] .reel-glint, .roll.done[data-drop] .item.win { animation: none; }
   }
   .result { text-align: center; background: var(--card); border-radius: 14px; padding: 14px; margin-bottom: 12px;
             font-size: 15px; }
   .result b { color: var(--accent); font-size: 18px; }
+  .result[data-drop] { box-shadow: inset 0 1px 0 var(--drop-edge); }
+  .result[data-drop] b { color: var(--drop-edge); }
   h2 { font-size: 17px; margin: 16px 0 10px; }
   /* Live strip above the case: the latest drops of everyone, newest on the left. */
   .feed { margin: 0 0 8px; }
@@ -508,8 +539,8 @@
       <div class="feed-head"><span class="live-dot"></span><span>Live · последние дропы</span></div>
       <div class="feed-track" id="feed-track"></div>
     </div>
-    <div class="roll" id="roll"><div class="roll-marker" aria-hidden="true"></div><div class="roll-track" id="track"></div><div class="reel-meter" aria-hidden="true"><b id="reel-meter-fill"></b></div></div>
-    <div class="result hidden" id="result"></div>
+    <div class="roll" id="roll"><div class="roll-marker" aria-hidden="true"></div><div class="roll-track" id="track"></div><div class="reel-glint" aria-hidden="true"></div><div class="reel-meter" aria-hidden="true"><b id="reel-meter-fill"></b></div></div>
+    <div class="result hidden" id="result" aria-live="polite"></div>
     <button type="button" id="spin">🎰 Крутить бесплатно</button>
     <div class="note" id="spin-note">Нажми — бот откроет кейс и пришлёт кнопку «🎰 Смотреть прокрутку».</div>
     <!-- Only on phones in Telegram (the script shows it); the bot decides when a shake counts. -->
@@ -619,7 +650,7 @@
   <div class="note" id="note"></div>
 </main>
 
-<script src="case-audio.js?v=sync-4"></script>
+<script src="case-audio.js?v=rarity-5"></script>
 <script>
   const tg = window.Telegram && window.Telegram.WebApp;
   // Not initData: a page opened from a reply-keyboard button (the only kind that can sendData) gets none.
@@ -777,14 +808,25 @@
   window.addEventListener("resize", alignReel);
   if (window.ResizeObserver) new ResizeObserver(alignReel).observe(roll);
 
+  // Rarity only decorates the reward after it lands. The bot chooses the prize.
+  const TIER = { tickets: 0, s167: 1, s500: 2, s833: 3, s1249: 4, ak: 5 };
+  const DROPS = [
+    { style: "tickets", sparks: 9, echo: 0, rain: 0, speed: 130, colors: ["#d6e0e8", "#9fb6c7"] },
+    { style: "common", sparks: 27, echo: 0, rain: 12, speed: 255, colors: ["#e5f2ff", "#96c5ff", "#679cfa"] },
+    { style: "common", sparks: 35, echo: 0, rain: 15, speed: 305, colors: ["#ecf6ff", "#8ec9ff", "#6b9cff"] },
+    { style: "rare", sparks: 46, echo: 16, rain: 20, speed: 365, colors: ["#fff0ff", "#dda9ff", "#a571ff", "#ffd699"] },
+    { style: "epic", sparks: 55, echo: 22, rain: 24, speed: 405, colors: ["#fff0fb", "#ffb2e9", "#f665d0", "#ffdc94"] },
+    { style: "top", sparks: 65, echo: 34, rain: 28, speed: 465, colors: ["#fff6d4", "#ffdd82", "#ffc05f", "#ff8a3d"] },
+  ];
+
   // Small metal ₽ coins and short-lived gold sparks share one canvas.
   const FX = (() => {
     const cv = $("fx"), ctx = cv.getContext("2d");
     let width = 0, height = 0, parts = [], raf = 0, last = 0, audibleBounces = 0, lastBounce = -Infinity;
     const colors = ["#fff1b6", "#ffcd62", "#ffa446", "#ed7323"];
     const random = (from, to) => from + Math.random() * (to - from);
-    const rimPoints = Array.from({ length: 24 }, (_, i) => {
-      const angle = i * Math.PI / 12;
+    const rimPoints = Array.from({ length: 22 }, (_, i) => {
+      const angle = i * Math.PI / 11;
       return [Math.cos(angle), Math.sin(angle)];
     });
     function resize() {
@@ -796,20 +838,24 @@
     window.addEventListener("resize", resize);
     resize();
 
-    function spark(x, y, speed, direction = random(0, Math.PI * 2)) {
+    function spark(x, y, speed, direction = random(0, Math.PI * 2), palette = colors, delay = 0) {
       if (parts.length >= 180) return;
-      parts.push({ x, y, age: 0, life: random(.27, .72), radius: random(.65, 1.65),
+      parts.push({ x, y, age: -delay, life: random(.27, .72), radius: random(.65, 1.65),
         vx: Math.cos(direction) * speed, vy: Math.sin(direction) * speed - 65,
-        color: colors[Math.floor(random(0, colors.length))] });
+        color: palette[Math.floor(random(0, palette.length))] });
     }
 
-    function coin(x, y, floor, index, count) {
-      const side = (index / (count - 1)) * 2 - 1;
-      parts.push({ coin: true, x, y, floor, age: -index * .019, life: random(1.28, 1.52),
-        radius: random(5.1, 6.5), vx: side * random(75, 124), vy: random(-268, -164),
-        pitch: random(-.47, .44), yaw: random(-.72, .72), roll: random(-.38, .38),
-        pitchRate: random(-6, 7), yawRate: random(7, 12) * (side < 0 ? -1 : 1),
-        rollRate: random(-2.5, 2.5) });
+    function rainWave(count, delay, arrivalSpread) {
+      for (let i = 0; i < count; i++) {
+        const radius = random(4.9, 6.45);
+        const x = 8 + (width - 16) * (i + random(.12, .88)) / count;
+        const sign = i % 2 ? 1 : -1;
+        parts.push({ coin: true, x, y: -radius - random(4, 25), floor: height - radius - 4,
+          age: -(delay + random(0, arrivalSpread)), life: 1.35 + Math.sqrt(height / 245),
+          radius, vx: random(-24, 24), vy: random(150, 254),
+          pitch: random(-.47, .44), yaw: random(-.72, .72), roll: random(-.38, .38),
+          pitchRate: random(-6, 7), yawRate: random(7, 12) * sign, rollRate: random(-2.5, 2.5) });
+      }
     }
 
     function polygon(points) {
@@ -877,7 +923,8 @@
     }
 
     function moveCoin(p, dt, now) {
-      p.vy += 530 * dt;
+      p.floor = height - p.radius - 4;
+      p.vy += 400 * dt;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
       p.pitch += p.pitchRate * dt;
@@ -886,7 +933,7 @@
       if (p.y < p.floor) return;
       const impact = p.vy;
       p.y = p.floor;
-      p.vy = impact > 42 ? -impact * .32 : 0;
+      p.vy = impact > 42 ? -impact * .20 : 0;
       p.vx *= impact > 42 ? .68 : .88;
       p.pitchRate *= .75; p.yawRate *= .75; p.rollRate *= .75;
       if (impact > 95 && audibleBounces < 2 && now - lastBounce > 83 && !document.hidden &&
@@ -943,19 +990,38 @@
         cancelAnimationFrame(raf); raf = 0; parts = []; ctx.clearRect(0, 0, width, height);
         audibleBounces = 0; lastBounce = -Infinity;
       },
+      open(bounds) {
+        if (reduceRoll || !bounds.width) return;
+        const x = bounds.left + bounds.width / 2;
+        for (let i = 0; i < 11; i++) {
+          const direction = i % 2 ? random(-.48, .24) : random(Math.PI - .24, Math.PI + .48);
+          spark(x + random(-4, 4), bounds.top + 10, random(89, 218), direction, colors, random(0, .095));
+        }
+        kick();
+      },
       roll(x, y, accent) {
         if (reduceRoll) return;
         const count = accent ? 5 : 2;
         for (let i = 0; i < count; i++) spark(x + random(-3, 3), y + random(-3, 3), random(60, 145), random(-2.9, -.4));
         kick();
       },
-      win(x, y, tier, hasSkin, bounds) {
-        const count = reduceRoll ? 8 : 30 + tier * 12;
-        for (let i = 0; i < count; i++) spark(x + random(-20, 20), y + random(-8, 8), random(100, 440));
-        if (hasSkin && !reduceRoll) {
-          const coins = 7 + Math.min(3, tier);
-          const floor = bounds.top + bounds.height - 9;
-          for (let i = 0; i < coins; i++) coin(x + random(-18, 18), y, floor, i, coins);
+      win(x, y, profile) {
+        const count = reduceRoll ? Math.min(12, profile.sparks) : profile.sparks;
+        for (let i = 0; i < count; i++) {
+          spark(x + random(-20, 20), y + random(-8, 8), random(profile.speed * .36, profile.speed),
+            random(-Math.PI, Math.PI), profile.colors);
+        }
+        if (!reduceRoll) {
+          for (let i = 0; i < profile.echo; i++) {
+            const direction = (i % 2 ? 0 : -Math.PI) + random(-.63, .63);
+            spark(x + random(-34, 34), y, random(profile.speed * .34, profile.speed * .8),
+              direction, profile.colors, random(.14, .28));
+          }
+          if (profile.rain && width > 32) {
+            const first = profile.echo ? Math.ceil(profile.rain * .59) : profile.rain;
+            rainWave(first, .04, .41);
+            if (first < profile.rain) rainWave(profile.rain - first, .43, .49);
+          }
         }
         kick();
       },
@@ -969,6 +1035,7 @@
     const started = performance.now();
     let lastCard = START, lastHaptic = -Infinity, lastSpark = -Infinity;
     reelPhase = "rolling";
+    roll.classList.remove("opening");
 
     function frame(now) {
       const progress = Math.min(1, Math.max(0, (now - started) / duration));
@@ -1005,8 +1072,6 @@
     }
     reelFrame = requestAnimationFrame(frame);
   }
-
-  const TIER = { tickets: 0, s167: 1, s500: 2, s833: 3, s1249: 4, ak: 5 };
 
   // The reel and shake effects use one gesture-unlocked Web Audio context.
   const SFX = (() => {
@@ -1057,13 +1122,17 @@
   function replay(code, text = null, done = null) {
     const win = ITEMS.find((it) => it.code === code);
     if (!win) return;
-    const leadIn = reduceRoll ? 120 : 260;
+    const tier = TIER[win.code] ?? 0, profile = DROPS[tier];
+    const result = $("result");
+    const leadIn = reduceRoll ? 120 : 320;
     FEED.hold(leadIn + (reduceRoll ? 360 : ROLL_MS) + 700);
     if (!text) $("spin").classList.add("hidden");
     $("spin-note").textContent = "";
-    $("result").classList.add("hidden");
+    result.classList.add("hidden");
+    delete result.dataset.drop;
+    delete roll.dataset.drop;
     roll.classList.remove("done", "slowing", "seating");
-    roll.classList.add("spinning");
+    roll.classList.add("spinning", "opening");
     roll.setAttribute("aria-busy", "true");
     cancelAnimationFrame(reelFrame);
     clearTimeout(queuedRoll);
@@ -1073,27 +1142,29 @@
     track.children[START].classList.add("at-marker");
     centerReel(cardCenter(START));
     reelMeter.style.transform = "scaleX(0)";
-    if (!document.hidden && roll.clientWidth > 0) SFX.reel("open");
+    if (!document.hidden && roll.clientWidth > 0) {
+      FX.open(roll.getBoundingClientRect());
+      SFX.reel("open");
+    }
     queuedRoll = setTimeout(() => animateReel(() => {
       const winCard = track.children[WIN];
       track.querySelector(".at-marker")?.classList.remove("at-marker");
       winCard.classList.add("win");
       roll.classList.remove("spinning", "slowing", "seating");
       roll.classList.add("done");
+      roll.dataset.drop = result.dataset.drop = profile.style;
       roll.setAttribute("aria-busy", "false");
       alignReel();
       if (!document.hidden && roll.clientWidth > 0) {
         const box = winCard.getBoundingClientRect();
-        const tier = TIER[win.code] ?? 0, skin = Boolean(win.img);
-        const bounds = roll.getBoundingClientRect();
-        FX.win(box.left + box.width / 2, box.top + box.height / 2, tier, skin, bounds);
-        SFX.reel("lock", { tier, skin });
+        FX.win(box.left + box.width / 2, box.top + box.height / 2, profile);
+        SFX.reel("lock", { tier, skin: Boolean(win.img) });
         if (inTelegram) tg.HapticFeedback?.notificationOccurred?.("success");
       }
-      $("result").classList.remove("hidden");
-      $("result").innerHTML = text ? text.replace(/\n/g, "<br>") : win.img
+      result.innerHTML = text ? text.replace(/\n/g, "<br>") : win.img
         ? `🎉 Тебе выпал скин <b>${win.price}</b><br>${win.wear}<br><br>Он уже в «🎒 Мои призы» в боте.`
         : `🎟 <b>+3 билета</b> в розыгрыше!<br><br>Следующий бесплатный кейс — завтра.`;
+      result.classList.remove("hidden");
       // A skin: the way to take it, right under the result (opens «Мои призы» in the bot).
       if (win.img && inTelegram) {
         const take = document.createElement("button");
@@ -1104,8 +1175,8 @@
           tg.openTelegramLink(`https://t.me/${BOT}?start=prizes`);
           tg.close();
         });
-        $("result").appendChild(document.createElement("br"));
-        $("result").appendChild(take);
+        result.appendChild(document.createElement("br"));
+        result.appendChild(take);
       }
       if (done) done();
     }), leadIn);

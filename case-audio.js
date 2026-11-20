@@ -16,6 +16,15 @@
     return Math.sin(TAU * hz * t) * Math.exp(-t / decay);
   }
 
+  function bell(time, start, hz, decay) {
+    const t = time - start;
+    if (t < 0 || t >= decay * 5) return 0;
+    return clamp(t / .0026) * (
+      .68 * resonance(t, hz, decay) + .19 * resonance(t, hz * 2.01, decay * .56) +
+      .11 * resonance(t, hz * 3.61, decay * .32)
+    );
+  }
+
   function render(ctx, duration, targetPeak, waveform) {
     const length = Math.ceil(ctx.sampleRate * duration);
     const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
@@ -61,15 +70,19 @@
         .24 * resonance(t, 2356, .006) + .24 * grit * Math.exp(-t / .0033)
       ));
 
-    const open = render(ctx, .138, .18, (t, grit, body) => {
+    const open = render(ctx, .168, .18, (t, grit, body) => {
       const latch = clamp(t / .00075) * (
-        .53 * resonance(t, 332, .018) + .45 * resonance(t, 1367, .010) +
-        .24 * resonance(t, 2770, .0052) + .25 * grit * Math.exp(-t / .004)
+        .53 * resonance(t, 332, .021) + .45 * resonance(t, 1367, .009) +
+        .21 * resonance(t, 2770, .0042) + .26 * grit * Math.exp(-t / .004)
       );
-      const sweep = attackDecay(t, .013, .042) * (
-        .22 * body + .12 * Math.sin(TAU * (520 * t - 1450 * t * t))
+      const sweep = attackDecay(t, .018, .049) * (
+        .23 * body + .15 * Math.sin(TAU * (510 * t - 1240 * t * t))
       );
-      return latch + sweep;
+      const latchBack = t - .033;
+      const catchClick = latchBack > 0 ? attackDecay(latchBack, .0011, .009) * (
+        .19 * grit + .27 * Math.sin(TAU * 931 * latchBack)
+      ) : 0;
+      return latch + sweep + catchClick;
     });
 
     const stop = render(ctx, .135, .222, (t, grit) => {
@@ -84,15 +97,25 @@
       return body + pawl;
     });
 
-    const reward = render(ctx, .31, .121, (t) => {
-      const first = attackDecay(t, .004, .071) * (
-        .59 * Math.sin(TAU * 659.25 * t) + .12 * Math.sin(TAU * 1430 * t)
+    // Four distinct cadences share the same unpitched stop event.
+    const tickets = render(ctx, .142, .071, t =>
+      .72 * bell(t, 0, 392, .029) + .25 * bell(t, .033, 330, .024));
+    const common = render(ctx, .298, .132, t =>
+      .74 * bell(t, 0, 587.33, .054) + .57 * bell(t, .050, 739.99, .054) +
+      .48 * bell(t, .098, 880, .061));
+    const rare = render(ctx, .528, .169, t =>
+      .70 * bell(t, 0, 659.25, .070) + .59 * bell(t, .055, 830.61, .077) +
+      .53 * bell(t, .109, 987.77, .091) + .47 * bell(t, .174, 1318.51, .105) +
+      .29 * bell(t, .174, 659.25, .105) + .16 * bell(t, .234, 1975.53, .072));
+    const jackpot = render(ctx, .718, .207, (t, grit) => {
+      const lowSweep = attackDecay(t, .013, .101) * (
+        .42 * Math.sin(TAU * (105 * t - 58 * t * t)) + .08 * grit
       );
-      const after = t - .043;
-      const second = after > 0 ? attackDecay(after, .005, .078) * (
-        .46 * Math.sin(TAU * 987.77 * after) + .095 * Math.sin(TAU * 2220 * after)
-      ) : 0;
-      return first + second;
+      const opening = .56 * bell(t, 0, 523.25, .092) + .45 * bell(t, .045, 659.25, .094) +
+        .52 * bell(t, .086, 783.99, .105) + .43 * bell(t, .131, 1046.50, .108);
+      const bloom = .41 * bell(t, .205, 1046.50, .132) + .33 * bell(t, .205, 1318.51, .128) +
+        .28 * bell(t, .205, 1567.98, .123) + .14 * bell(t, .289, 2093.00, .095);
+      return opening + bloom + lowSweep;
     });
 
     const coin = render(ctx, .064, .069, (t, grit) =>
@@ -101,7 +124,7 @@
         .17 * resonance(t, 4168, .006) + .18 * grit * Math.exp(-t / .003)
       ));
 
-    const built = { fast, slow, open, stop, reward, coin, coinHits: 0 };
+    const built = { fast, slow, open, stop, tickets, common, rare, jackpot, coin, coinHits: 0 };
     soundBanks.set(ctx, built);
     return built;
   }
@@ -156,10 +179,11 @@
       const bank = soundBank(rig.ctx);
       const time = rig.ctx.currentTime;
       const quality = clamp(tier, 5);
+      const reward = !skin ? bank.tickets : quality >= 5 ? bank.jackpot : quality >= 3 ? bank.rare : bank.common;
+      const volume = !skin ? .65 : quality >= 5 ? .89 : .78 + .018 * quality;
       bank.coinHits = 0;
-      play(rig, bank.stop, time, skin ? .86 : .67);
-      play(rig, bank.reward, time, skin ? .62 + quality * .049 : .34,
-        skin ? 1 + quality * .028 : .84);
+      play(rig, bank.stop, time, skin ? .81 + quality * .024 : .58);
+      play(rig, reward, time, volume);
       return true;
     },
 
