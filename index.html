@@ -93,6 +93,21 @@
   .p-empty { padding: 18px 14px; border-radius: 14px; background: var(--card); color: var(--hint); text-align: center; }
   .p-refresh { display: block; width: 100%; margin: 12px 0 4px; padding: 12px; border: 1px solid rgba(245, 166, 35, .65); border-radius: 12px;
                background: transparent; color: var(--accent); font-size: 14px; font-weight: 700; }
+  .p-referral { margin: 12px 0; padding: 14px; border-radius: 14px; background: linear-gradient(135deg, rgba(255, 198, 65, .18), rgba(102, 75, 160, .2));
+                box-shadow: inset 0 0 0 1px rgba(255, 214, 100, .24); }
+  .p-ref-head { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+  .p-ref-title { font-size: 16px; font-weight: 800; }
+  .p-ref-count { color: var(--accent); font-size: 14px; font-weight: 800; }
+  .p-ref-copy { margin: 5px 0 10px; color: var(--hint); font-size: 13px; }
+  .p-ref-bar { height: 8px; overflow: hidden; border-radius: 999px; background: rgba(0, 0, 0, .25); }
+  .p-ref-fill { height: 100%; width: 0; border-radius: inherit; background: var(--accent); transition: width .45s ease; }
+  .p-ref-btn { width: 100%; margin-top: 10px; padding: 11px; border: 0; border-radius: 10px; background: var(--accent); color: var(--accent-text);
+               font-size: 14px; font-weight: 800; }
+  .p-ref-btn.secondary { background: rgba(255, 255, 255, .1); color: var(--text); }
+  .p-ref-list { margin-top: 10px; display: grid; gap: 5px; color: var(--hint); font-size: 12px; }
+  .p-ref-friend { display: flex; justify-content: space-between; gap: 8px; }
+  .p-ref-friend b { color: var(--text); font-weight: 600; }
+  .p-ref-friend.ok { color: #80e7a0; }
   .game-link { display: block; margin: -6px 0 16px; padding: 12px 14px; border-radius: 12px; text-align: center;
                background: linear-gradient(90deg, #ffcf33, #ffb300); color: #3a2600; font-weight: 700; font-size: 15px;
                text-decoration: none; }
@@ -450,6 +465,14 @@
         <div class="p-stat"><span>👥 Друзья</span><b id="p-friends">0</b></div>
         <div class="p-stat"><span>🔥 Серия кейса</span><b id="p-streak">0 дн.</b></div>
       </div>
+      <div class="p-referral" id="p-referral">
+        <div class="p-ref-head"><div class="p-ref-title">👥 Пригласи друзей</div><div class="p-ref-count" id="p-ref-count">0/3</div></div>
+        <div class="p-ref-copy" id="p-ref-copy">За 3 подтверждённых друзей — бонусный кейс со скином.</div>
+        <div class="p-ref-bar"><div class="p-ref-fill" id="p-ref-fill"></div></div>
+        <div class="p-ref-list" id="p-ref-list"></div>
+        <button type="button" class="p-ref-btn" id="p-ref-invite">📤 Пригласить друга</button>
+        <button type="button" class="p-ref-btn secondary hidden" id="p-ref-case">🎁 Открыть бонусный кейс</button>
+      </div>
       <div class="p-section">📅 Сегодня</div>
       <div class="p-list" id="p-daily"></div>
       <div class="p-chest" id="p-chest"></div>
@@ -602,16 +625,19 @@
   }
 
   // Same referral link as the bot's «Пригласить друга»: t.me/<bot>?start=r<user id>.
-  $("invite").addEventListener("click", () => {
+  function shareReferral() {
     const user = inTelegram && tg.initDataUnsafe.user;
     if (!user) {
       $("note").textContent = "Ссылка для друга появится, если открыть страницу из бота в Telegram.";
       return;
     }
     const link = `https://t.me/${BOT}?start=r${user.id}`;
-    const text = "🔥 Бесплатные розыгрыши скинов CS2 + ежедневный кейс. Заходи!";
+    const text = "🎁 Бесплатный розыгрыш CS2: тебе — участие и ежедневный кейс, а мне — +3 билета. Заходи!";
     tg.openTelegramLink("https://t.me/share/url?" + new URLSearchParams({ url: link, text }));
-  });
+  }
+  $("invite").addEventListener("click", shareReferral);
+  $("p-ref-invite").addEventListener("click", shareReferral);
+  $("p-ref-case").addEventListener("click", () => showTab("case"));
 
   function setError(id, text) {
     $(id + "-err").textContent = text || "";
@@ -1004,6 +1030,20 @@
       $("p-chance").textContent = data.giveaway.chance ? "Твой " + data.giveaway.chance.replace(/<[^>]*>/g, "") : "Участвуй в розыгрыше, чтобы копить билеты.";
       $("p-friends").textContent = data.giveaway.friends + " × 3";
       $("p-streak").textContent = data.streak.days + " дн.";
+      const referrals = data.referrals || { confirmed: 0, goal: 3, case_ready: false, case_claimed: false, friends: [] };
+      $("p-ref-count").textContent = `${referrals.confirmed}/${referrals.goal}`;
+      $("p-ref-fill").style.width = Math.min(100, referrals.confirmed / Math.max(1, referrals.goal) * 100) + "%";
+      $("p-ref-copy").textContent = referrals.case_ready ? "Бонусный кейс готов — обычный ежедневный кейс тоже останется доступен."
+        : referrals.case_claimed ? "Бонусный кейс за 3 подтверждённых друзей уже открыт."
+        : `Ещё ${Math.max(0, referrals.goal - referrals.confirmed)} подтверждённых друга — и получишь бонусный кейс со скином.`;
+      clear("p-ref-list");
+      referrals.friends.slice(0, 5).forEach((friend) => {
+        const row = document.createElement("div"); row.className = "p-ref-friend" + (friend.status === "confirmed" ? " ok" : "");
+        const name = document.createElement("b"); name.textContent = friend.name;
+        const status = document.createElement("span"); status.textContent = friend.status === "confirmed" ? "✅ участвует" : "⏳ завершает вход";
+        row.append(name, status); $("p-ref-list").appendChild(row);
+      });
+      $("p-ref-case").classList.toggle("hidden", !referrals.case_ready);
       clear("p-daily");
       data.daily.forEach((task) => $("p-daily").appendChild(makeRow("⬜", task.title, task.done ? "Готово" : "Выполни сегодня", task.done)));
       const shield = data.streak.save_ready ? "🛡 Щит сохранит серию после одного пропуска." : data.streak.save_left ? `🛡 Следующий щит через ${data.streak.save_left} дн.` : "🛡 Щит серии готов.";
