@@ -154,21 +154,28 @@
   .roll::after { right: 0; background: linear-gradient(-90deg, #24222e, transparent); }
   .roll-track { position: relative; display: flex; gap: 8px; will-change: transform; }
   .roll .item { flex: 0 0 110px; padding: 0 6px 6px; border-radius: 10px; }
+  .roll .item.top:not(.win)::after { animation: none; }
+  .roll.spinning .item { opacity: .74; }
+  .roll.spinning .item.at-marker { opacity: 1; box-shadow: inset 0 0 0 1px #ffe09b60; }
   .roll .item-price { font-size: 14px; }
   .roll .item-wear { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .roll .item { transition: opacity .5s; }
-  .roll .item.win { z-index: 1; box-shadow: 0 0 0 2px #ffd45a inset, 0 0 14px rgba(255, 200, 70, .52); }
-  .roll.done .item:not(.win) { opacity: .38; }
+  .roll .item { transition: opacity .18s ease; }
+  .roll .item.win { z-index: 1; box-shadow: 0 0 0 2px #ffd45a inset, 0 0 16px rgba(255, 200, 70, .48); }
+  .roll.done .item:not(.win) { opacity: .3; }
   /* the line the strip stops under, with a little arrow at both ends */
   .roll-marker { position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; margin-left: -1px; z-index: 3;
                  pointer-events: none; transform-origin: 50% 50%;
-                 background: linear-gradient(180deg, #fff0ad, #e4ae39 50%, #fff0ad);
-                 box-shadow: 0 0 12px rgba(255, 200, 70, .85); }
+                 background: linear-gradient(180deg, #ffe59a, #ffcc6540 34%, transparent 49% 51%, #ffcc6540 66%, #ffe59a);
+                 filter: drop-shadow(0 0 4px #ffcf6790); }
   .roll.slowing .roll-marker { box-shadow: 0 0 16px rgba(255, 182, 62, .85); }
   .roll-marker::before, .roll-marker::after { content: ""; position: absolute; left: 50%; margin-left: -7px;
                                               border: 7px solid transparent; }
   .roll-marker::before { top: 0; border-top-color: #ffd45a; border-bottom-width: 0; }
   .roll-marker::after { bottom: 0; border-bottom-color: #ffd45a; border-top-width: 0; }
+  .reel-meter { position: absolute; z-index: 4; left: 11px; right: 11px; bottom: 1px; height: 2px; border-radius: 2px;
+                pointer-events: none; overflow: hidden; background: #f8cc6626; }
+  .reel-meter b { display: block; height: 100%; transform: scaleX(0); transform-origin: left;
+                  border-radius: inherit; background: linear-gradient(90deg,#bd8030,#ffd165 72%,#fff1b4); }
   #fx { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
   #tab-case { position: relative; }
   .snd { position: absolute; right: 0; top: 0; width: 38px; height: 38px; border: 0; border-radius: 50%; z-index: 5;
@@ -176,6 +183,7 @@
   .snd:active { transform: scale(.94); }
   @media (prefers-reduced-motion: reduce) {
     .item.top::after { animation: none; }
+    .roll .item { transition: none; }
   }
   .result { text-align: center; background: var(--card); border-radius: 14px; padding: 14px; margin-bottom: 12px;
             font-size: 15px; }
@@ -345,8 +353,7 @@
   #splash { position: fixed; inset: 0; z-index: 3000; overflow: hidden; background: #06080d; opacity: 1; transition: opacity .26s ease; }
   #splash.leaving { opacity: 0; pointer-events: none; }
   #splash-poster, #splash-video { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
-  #splash-poster { z-index: 2; opacity: 1; transition: opacity .18s ease; }
-  #splash-poster.leaving { opacity: 0; }
+  #splash-poster { z-index: 2; }
   #splash-video { z-index: 1; }
   #splash-start { position: absolute; z-index: 3; inset: 0; display: block; padding: 0; border: 0; border-radius: 0; background: transparent; }
   #splash-start .splash-play { position: absolute; right: max(28px, env(safe-area-inset-right)); bottom: max(42px, calc(env(safe-area-inset-bottom) + 20px)); width: 0; height: 0; border-top: 18px solid transparent; border-bottom: 18px solid transparent; border-left: 29px solid #ffcf28; filter: drop-shadow(0 0 6px rgba(255,240,135,.95)) drop-shadow(0 0 16px rgba(255,190,0,.85)) drop-shadow(0 5px 10px rgba(0,0,0,.5)); }
@@ -358,7 +365,7 @@
 <div id="splash">
   <img id="splash-poster" src="splash-ak47-poster.jpg?v=2" alt="" aria-hidden="true">
   <video id="splash-video" playsinline preload="auto" aria-hidden="true">
-    <source src="splash-ak47.mp4?v=2" type="video/mp4">
+    <source src="splash-ak47.mp4?v=sync-3" type="video/mp4">
   </video>
   <button type="button" id="splash-start" aria-label="Запустить ролик со звуком"><span class="splash-play" aria-hidden="true"></span></button>
 </div>
@@ -500,7 +507,7 @@
       <div class="feed-head"><span class="live-dot"></span><span>Live · последние дропы</span></div>
       <div class="feed-track" id="feed-track"></div>
     </div>
-    <div class="roll" id="roll"><div class="roll-marker"></div><div class="roll-track" id="track"></div></div>
+    <div class="roll" id="roll"><div class="roll-marker" aria-hidden="true"></div><div class="roll-track" id="track"></div><div class="reel-meter" aria-hidden="true"><b id="reel-meter-fill"></b></div></div>
     <div class="result hidden" id="result"></div>
     <button type="button" id="spin">🎰 Крутить бесплатно</button>
     <div class="note" id="spin-note">Нажми — бот откроет кейс и пришлёт кнопку «🎰 Смотреть прокрутку».</div>
@@ -611,6 +618,7 @@
   <div class="note" id="note"></div>
 </main>
 
+<script src="case-audio.js?v=sync-3"></script>
 <script>
   const tg = window.Telegram && window.Telegram.WebApp;
   // Not initData: a page opened from a reply-keyboard button (the only kind that can sendData) gets none.
@@ -728,9 +736,9 @@
   ITEMS.forEach((it) => { if (it.img) new Image().src = it.img + "?v=2"; });
 
   // The server-selected prize stays at WIN; the other cards are decoration.
-  const STRIP = 56, START = 3, WIN = 48, ROLL_MS = 6500;
+  const STRIP = 56, START = 3, WIN = 48, ROLL_MS = 5500;
   const reduceRoll = Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
-  const roll = $("roll"), track = $("track");
+  const roll = $("roll"), track = $("track"), reelMeter = $("reel-meter-fill");
   let reelPhase = "idle", reelFrame = 0, queuedRoll = 0;
   function weighted() {
     let r = Math.random() * 100;
@@ -744,18 +752,19 @@
   }
   function cardCenter(index) {
     const item = track.children[index];
-    return item.offsetLeft + item.offsetWidth / 2;
+    // A replay may continue while another tab hides the fixed-width strip.
+    return item.offsetWidth ? item.offsetLeft + item.offsetWidth / 2 : index * 118 + 55;
   }
   function centerReel(position) {
     track.style.transform = `translate3d(${roll.clientWidth / 2 - position}px, 0, 0)`;
   }
   function rollTravel(progress) {
-    // Continuous speed at the join between acceleration and braking.
-    const ramp = .17, distance = .18;
-    if (progress <= ramp) return distance * (progress / ramp) ** 2;
-    const brake = (progress - ramp) / (1 - ramp);
-    const exponent = 2 * distance * (1 - ramp) / (ramp * (1 - distance));
-    return distance + (1 - distance) * (1 - (1 - brake) ** exponent);
+    // Integrate a velocity curve with a clean start, a coast, and a long brake.
+    const ramp = .15, coastEnd = .43;
+    const distance = ramp / 2 + (coastEnd - ramp) + (1 - coastEnd) / 2;
+    if (progress <= ramp) return (progress ** 2 / (2 * ramp)) / distance;
+    if (progress <= coastEnd) return (progress - ramp / 2) / distance;
+    return 1 - (1 - progress) ** 2 / (2 * (1 - coastEnd) * distance);
   }
   fillStrip(null);
   requestAnimationFrame(() => { if (reelPhase === "idle") alignReel(); });
@@ -806,6 +815,14 @@
       ctx.fillStyle = rim;
       for (let offset = edge; offset >= 0; offset -= .6) {
         ctx.beginPath(); ctx.ellipse(offset, 0, r * squash, r, 0, 0, Math.PI * 2); ctx.fill();
+      }
+      if (edge > .7) {
+        ctx.strokeStyle = "#46270e";
+        ctx.lineWidth = .38;
+        for (let y = -r * .64; y <= r * .64; y += 1.15) {
+          const x = r * squash * Math.sqrt(1 - (y / r) ** 2);
+          ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + edge * .76, y + .12); ctx.stroke();
+        }
       }
       const metal = ctx.createLinearGradient(-r * squash, -r, r * squash, r);
       metal.addColorStop(0, "#ffecae"); metal.addColorStop(.38, "#db9b35");
@@ -865,9 +882,10 @@
       clear() {
         cancelAnimationFrame(raf); raf = 0; parts = []; ctx.clearRect(0, 0, width, height);
       },
-      roll(x, y) {
+      roll(x, y, accent) {
         if (reduceRoll) return;
-        for (let i = 0; i < 3; i++) spark(x + random(-3, 3), y + random(-3, 3), random(60, 145), random(-2.9, -.4));
+        const count = accent ? 5 : 2;
+        for (let i = 0; i < count; i++) spark(x + random(-3, 3), y + random(-3, 3), random(60, 145), random(-2.9, -.4));
         kick();
       },
       win(x, y, tier, hasSkin) {
@@ -879,48 +897,49 @@
     };
   })();
 
-  function animateReel(win, onDone) {
+  function animateReel(onDone) {
     const start = cardCenter(START), finish = cardCenter(WIN);
     const step = cardCenter(START + 1) - start;
     const duration = reduceRoll ? 360 : ROLL_MS;
     const started = performance.now();
-    let lastCard = START, lastTick = -Infinity, lastSpark = -Infinity;
+    let lastCard = START, lastHaptic = -Infinity, lastSpark = -Infinity;
     reelPhase = "rolling";
-    if (!reduceRoll) SFX.play("roll", .3);
 
     function frame(now) {
       const progress = Math.min(1, Math.max(0, (now - started) / duration));
       const position = reduceRoll || progress === 1 ? finish : start + (finish - start) * rollTravel(progress);
       centerReel(position);
+      reelMeter.style.transform = `scaleX(${progress})`;
       roll.classList.toggle("slowing", !reduceRoll && progress > .73 && progress < 1);
-      const current = START + Math.round((position - start) / Math.max(1, step));
+      const current = Math.min(WIN, START + Math.round((position - start) / Math.max(1, step)));
       if (!reduceRoll && current !== lastCard) {
+        track.children[lastCard].classList.remove("at-marker");
+        track.children[current].classList.add("at-marker");
         lastCard = current;
-        if (now - lastTick >= 70) {
+        const visible = !document.hidden && roll.clientWidth > 0;
+        const accent = progress > .74;
+        if (visible) SFX.reel("tick", { progress, accent });
+        if (visible && now - lastHaptic >= 70) {
           if (inTelegram) tg.HapticFeedback?.selectionChanged?.();
-          lastTick = now;
+          lastHaptic = now;
         }
-        if (now - lastSpark >= 108 && progress > .12) {
+        if (visible && now - lastSpark >= 103 && progress > .10) {
           const marker = roll.getBoundingClientRect();
-          FX.roll(marker.left + marker.width / 2, marker.top + 9);
+          FX.roll(marker.left + marker.width / 2, marker.top + 9, accent);
           lastSpark = now;
         }
       }
       if (progress < 1) reelFrame = requestAnimationFrame(frame);
-      else { reelFrame = 0; reelPhase = "done"; onDone(win); }
+      else { reelFrame = 0; reelPhase = "done"; onDone(); }
     }
     reelFrame = requestAnimationFrame(frame);
   }
 
   const TIER = { tickets: 0, s167: 1, s500: 2, s833: 3, s1249: 4, ak: 5 };
 
-  // ---- Sounds: studio-made one-shots played through Web Audio so they stay locked to the strip. ----
-  // open: the tap · roll: ticks timed to the strip's slow-down (starts together with the slide) · win / top / tickets: the prize.
-  // Browsers only start audio after a tap on the page, so a replay opened straight from the chat may stay silent. That's fine.
+  // The reel and shake effects use one gesture-unlocked Web Audio context.
   const SFX = (() => {
-    const FILES = { open: "sfx_open.mp3", roll: "sfx_roll.mp3", win: "sfx_win.mp3", top: "sfx_win_top.mp3", tickets: "sfx_win_tickets.mp3" };
-    const bufs = {};
-    let ctx = null, gain = null, loading = null, on = true, unlocked = false;
+    let ctx = null, gain = null, on = true;
     try { on = localStorage.getItem("sfx") !== "off"; } catch (e) { /* storage can be unavailable: default to on */ }
     const btn = $("snd");
     const paint = () => { btn.textContent = on ? "🔊" : "🔇"; btn.setAttribute("aria-pressed", String(on)); btn.title = on ? "Звук включён" : "Звук выключен"; };
@@ -928,44 +947,34 @@
       if (ctx) return ctx;
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return null;
-      try { ctx = new AC(); gain = ctx.createGain(); gain.gain.value = 0.9; gain.connect(ctx.destination); } catch (e) { ctx = null; }
+      try { ctx = new AC(); gain = ctx.createGain(); gain.gain.value = on ? .9 : 0; gain.connect(ctx.destination); } catch (e) { ctx = null; gain = null; }
       return ctx;
     }
-    function load() {   // fetch + decode once; a missing file only silences that one sound
-      if (loading) return loading;
-      const c = ensure();
-      if (!c) return Promise.resolve();
-      loading = Promise.all(Object.entries(FILES).map(async ([name, file]) => {
-        try {
-          const ab = await (await fetch(file + "?v=1")).arrayBuffer();
-          bufs[name] = await new Promise((ok, fail) => { const p = c.decodeAudioData(ab, ok, fail); if (p && p.catch) p.catch(fail); });
-        } catch (e) { /* ignore */ }
-      }));
-      return loading;
-    }
-    function unlock() {   // call from a tap
+    function unlock() {
+      if (!on) return Promise.resolve(false);
       const c = ensure();
       if (!c) return Promise.resolve(false);
-      const ready = c.state === "running" ? Promise.resolve() : c.resume().catch(() => {});
-      load();
-      return ready.then(() => { unlocked = c.state === "running"; return unlocked; });
-    }
-    function play(name, offset = 0) {
-      if (!on || !unlocked || !ctx || ctx.state !== "running" || !bufs[name]) return false;
-      try { const s = ctx.createBufferSource(); s.buffer = bufs[name]; s.connect(gain); s.start(0, offset); return true; } catch (e) { return false; }
+      if (c.state === "running") return Promise.resolve(true);
+      return c.resume().then(() => c.state === "running", () => false);
     }
     function toggle() {
       on = !on;
       try { localStorage.setItem("sfx", on ? "on" : "off"); } catch (e) { /* ignore */ }
+      if (gain) gain.gain.setTargetAtTime(on ? .9 : 0, ctx.currentTime, .015);
       paint();
       if (on) unlock();
     }
     paint();
     btn.addEventListener("click", toggle);
     document.addEventListener("pointerdown", unlock, { once: true, passive: true });
-    // rig: the audio context and its output while sound is on and unlocked (null otherwise): the shake sounds are synthesised on it
-    const rig = () => (on && unlocked && ctx && ctx.state === "running" ? { ctx, out: gain } : null);
-    return { load, unlock, play, toggle, rig };
+    const rig = () => (on && ctx?.state === "running" ? { ctx, out: gain } : null);
+    function reel(cue, options) {
+      const output = rig();
+      if (output) {
+        try { window.YooCaseAudio?.[cue]?.(output, options); } catch (e) { /* audio never interrupts the result */ }
+      }
+    }
+    return { unlock, rig, reel };
   })();
 
   // text: the bot's own result (HTML) when it answered right here; null when replaying from the chat.
@@ -979,21 +988,31 @@
     $("result").classList.add("hidden");
     roll.classList.remove("done", "slowing");
     roll.classList.add("spinning");
+    roll.setAttribute("aria-busy", "true");
     cancelAnimationFrame(reelFrame);
     clearTimeout(queuedRoll);
     reelPhase = "queued";
     FX.clear();
     fillStrip(win);
+    track.children[START].classList.add("at-marker");
     centerReel(cardCenter(START));
-    queuedRoll = setTimeout(() => animateReel(win, () => {
+    reelMeter.style.transform = "scaleX(0)";
+    if (!document.hidden && roll.clientWidth > 0) SFX.reel("open");
+    queuedRoll = setTimeout(() => animateReel(() => {
       const winCard = track.children[WIN];
+      track.querySelector(".at-marker")?.classList.remove("at-marker");
       winCard.classList.add("win");
       roll.classList.remove("spinning", "slowing");
       roll.classList.add("done");
-      const box = winCard.getBoundingClientRect();
-      FX.win(box.left + box.width / 2, box.top + box.height / 2, TIER[win.code] ?? 0, Boolean(win.img));
-      SFX.play(win.code === "ak" ? "top" : win.img ? "win" : "tickets");
-      if (inTelegram) tg.HapticFeedback?.notificationOccurred?.("success");
+      roll.setAttribute("aria-busy", "false");
+      alignReel();
+      if (!document.hidden && roll.clientWidth > 0) {
+        const box = winCard.getBoundingClientRect();
+        const tier = TIER[win.code] ?? 0, skin = Boolean(win.img);
+        FX.win(box.left + box.width / 2, box.top + box.height / 2, tier, skin);
+        SFX.reel("lock", { tier, skin });
+        if (inTelegram) tg.HapticFeedback?.notificationOccurred?.("success");
+      }
       $("result").classList.remove("hidden");
       $("result").innerHTML = text ? text.replace(/\n/g, "<br>") : win.img
         ? `🎉 Тебе выпал скин <b>${win.price}</b><br>${win.wear}<br><br>Он уже в «🎒 Мои призы» в боте.`
@@ -1147,7 +1166,7 @@
     button.disabled = true;
     button.textContent = bonus ? "🌀 Открываем суперкейс…" : "🎰 Крутим…";
     SHAKE.lock(true);
-    SFX.unlock().then(() => SFX.play("open"));
+    SFX.unlock();
     const reset = () => { button.disabled = false; button.textContent = "🎰 Крутить бесплатно"; SHAKE.lock(false); SHAKE.refresh(); };
     let data;
     try {
@@ -1933,7 +1952,7 @@
       }
     }
     window.scrollTo(0, 0);
-    if (name === "case") { SFX.load(); FEED.start(); SHAKE.refresh(); } else { FEED.stop(); }
+    if (name === "case") { FEED.start(); SHAKE.refresh(); } else { FEED.stop(); }
     if (name === "progress") PROGRESS.refresh();
   }
   document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
@@ -1941,36 +1960,36 @@
 
   const SPLASH = (() => {
     const splash = $("splash"), poster = $("splash-poster"), video = $("splash-video"), start = $("splash-start");
-    const posterTime = 1;
     let closed = false;
+    let resolve;
+    const finished = new Promise(done => { resolve = done; });
     video.pause();
     function close() {
       if (closed) return;
       closed = true;
       video.pause();
       splash.classList.add("leaving");
-      setTimeout(() => splash.remove(), 280);
+      setTimeout(() => { splash.remove(); resolve(); }, reduceRoll ? 0 : 280);
     }
-    function cuePosterFrame() {
-      if (Number.isFinite(video.duration)) video.currentTime = Math.min(posterTime, Math.max(0, video.duration - .05));
-    }
-    if (video.readyState >= 1) cuePosterFrame();
-    else video.addEventListener("loadedmetadata", cuePosterFrame, { once: true });
+    video.addEventListener("playing", () => {
+      poster.remove();
+      start.remove();
+    }, { once: true });
     start.addEventListener("click", () => {
       start.disabled = true;
-      video.currentTime = 0;
       video.muted = false;
       video.volume = 1;
-      video.play().then(() => {
-        start.hidden = true;
-        poster.classList.add("leaving");
-        setTimeout(() => poster.remove(), 190);
-      }).catch(() => {
-        start.disabled = false;
+      SFX.unlock();
+      video.play().catch(error => {
+        if (error.name === "NotAllowedError") start.disabled = false;
+        else close();
       });
     });
     video.addEventListener("ended", close, { once: true });
     video.addEventListener("error", close, { once: true });
+    video.querySelector("source")?.addEventListener("error", close, { once: true });
+    if (video.error) close();
+    return finished;
   })();
 
   if (inTelegram) {
@@ -1982,7 +2001,7 @@
   }
   const initialRoll = location.hash.match(/^#roll=(\w+)/);
   showTab(initialRoll || location.hash === "#case" ? "case" : location.hash === "#tourney" ? "tourney" : "progress");
-  if (initialRoll) replay(initialRoll[1]);
+  if (initialRoll) SPLASH.then(() => replay(initialRoll[1]));
   LIVE.start();
 </script>
 </body>
