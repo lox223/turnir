@@ -123,6 +123,10 @@
                          -webkit-user-drag: none; user-select: none; pointer-events: none; }
   .item-wear { color: #9a98a6; font-size: 12px; }
   .item-price { color: #fff; font-weight: 700; font-size: 16px; }
+  .ruble-coin { display: inline-grid; place-items: center; width: 13px; height: 13px; vertical-align: 1px;
+                border-radius: 50%; border: 1px solid #e9ba65; color: #573416; font: 800 9px/1 system-ui, sans-serif;
+                background: radial-gradient(circle at 28% 22%, #fff1b1, #f0c471 37%, #c38b39 73%, #9a5e24);
+                box-shadow: inset 0 0 0 1px #bd823b, .6px 1.3px 0 #714318, 0 1.5px 2px #0009; }
   .item-chance { position: absolute; top: 8px; left: 8px; background: rgba(0, 0, 0, .45); color: #fff;
                  border-radius: 6px; padding: 1px 7px; font-size: 12px; font-weight: 600; }
   .item.top { box-shadow: 0 0 0 1px #e4ae39 inset; }
@@ -136,51 +140,86 @@
   #spin:disabled { opacity: .6; }
   #take { margin-top: 12px; width: 100%; padding: 13px; border: 0; border-radius: 12px; background: #4b69ff;
           color: #fff; font-size: 16px; font-weight: 700; }
-  .roll { position: relative; overflow: hidden; border-radius: 14px; background: linear-gradient(180deg, #302d3e, #201f2a 34%, #24222e);
-          padding: 12px 0; margin-bottom: 12px; border: 1px solid rgba(255, 224, 138, .16);
-          box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .035), inset 0 16px 28px rgba(255, 231, 161, .05),
-                      inset 0 -18px 30px rgba(0, 0, 0, .38), 0 8px 22px rgba(0, 0, 0, .18); }
-  .roll.spinning { box-shadow: inset 0 0 0 1px rgba(255, 223, 135, .32), inset 0 16px 28px rgba(255, 231, 161, .1),
-                   inset 0 -18px 30px rgba(0, 0, 0, .42), 0 0 24px rgba(245, 184, 55, .18); }
-  .roll.slowing { border-color: rgba(255, 190, 74, .6); box-shadow: inset 0 0 30px rgba(255, 129, 25, .2),
-                  inset 0 0 0 1px rgba(255, 231, 161, .22), 0 0 30px rgba(255, 139, 31, .22); }
-  .roll::before, .roll::after { content: ""; position: absolute; top: 0; bottom: 0; width: 56px; z-index: 2;
+  .roll { position: relative; overflow: hidden; border-radius: 14px;
+          background: radial-gradient(55% 90% at 50% 20%, #3a2d25, transparent), linear-gradient(180deg,#292433,#15141d 40%,#24222e);
+          padding: 12px 0; margin-bottom: 12px; border: 1px solid #f6d28835;
+          box-shadow: inset 0 1px #fff0b319, inset 0 -14px 28px #0008, 0 9px 18px #0004; }
+  .roll.spinning { border-color: #d5a35078; }
+  .roll.slowing { border-color: #eeb658a0; }
+  .roll.seating { border-color: #ffd374cc; }
+  .roll::before, .roll::after { content: ""; position: absolute; top: 0; bottom: 0; width: clamp(36px, 15%, 66px); z-index: 2;
                                 pointer-events: none; }
-  .roll::before { left: 0; background: linear-gradient(90deg, #24222e, transparent); }
-  .roll::after { right: 0; background: linear-gradient(-90deg, #24222e, transparent); }
-  .roll-track { display: flex; gap: 8px; will-change: transform; }
+  .roll::before { left: 0; background: linear-gradient(90deg, #1b1923 5%, #1b1923b8 42%, transparent); }
+  .roll::after { right: 0; background: linear-gradient(-90deg, #1b1923 5%, #1b1923b8 42%, transparent); }
+  .roll-track { position: relative; display: flex; gap: 8px; will-change: transform; }
   .roll .item { flex: 0 0 110px; padding: 0 6px 6px; border-radius: 10px; }
+  .roll .item.top:not(.win)::after { animation: none; }
+  .roll.spinning .item { opacity: .71; transform: scale(.976); }
+  .roll.spinning .item.at-marker { opacity: 1; transform: scale(1); box-shadow: inset 0 0 0 1px #ffe09b60; }
+  .roll.seating .item.at-marker { box-shadow: inset 0 0 0 1px #ffd580b0; }
   .roll .item-price { font-size: 14px; }
   .roll .item-wear { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .roll .item { transition: opacity .5s; }
-  .roll .item.win { z-index: 1; box-shadow: 0 0 0 2px #ffd45a inset, 0 0 20px rgba(255, 200, 70, .75);
-                    animation: winPulse 1s ease-in-out 3; }
-  .roll.done .item:not(.win) { opacity: .38; }
-  @keyframes winPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.07); } }
+  .roll .item { transition: opacity .15s ease, transform .15s ease; }
+  .roll .item.win { z-index: 1; box-shadow: 0 0 0 2px #ffd45a inset, 0 0 16px rgba(255, 200, 70, .48); }
+  .roll.done .item:not(.win) { opacity: .3; }
+  .reel-glint { position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0;
+                background: linear-gradient(108deg, transparent 39%, var(--drop-aura, #ffcf6240) 49%, transparent 61%); }
+  .roll.opening .reel-glint { animation: reel-unlock .32s ease-out both; }
+  @keyframes reel-unlock { 0% { opacity: 0; transform: translateX(-76%); }
+                           38% { opacity: .85; } 100% { opacity: 0; transform: translateX(74%); } }
+  [data-drop="tickets"] { --drop-edge: #c2d1de; --drop-aura: #a9bdce29; }
+  [data-drop="common"] { --drop-edge: #94c4ff; --drop-aura: #79a7fb54; }
+  [data-drop="rare"] { --drop-edge: #d1a6ff; --drop-aura: #bb83ff69; }
+  [data-drop="epic"] { --drop-edge: #ff9bdf; --drop-aura: #ff7dcc6b; }
+  [data-drop="top"] { --drop-edge: #ffe29d; --drop-aura: #ffb84880; }
+  .roll.done[data-drop] { border-color: var(--drop-edge); }
+  .roll.done[data-drop] .item.win {
+    box-shadow: inset 0 0 0 1.5px var(--drop-edge), 0 0 20px var(--drop-aura);
+  }
+  .roll[data-drop="tickets"] .item.win { animation: prize-quiet .25s ease-out; }
+  .roll[data-drop="common"] .item.win { animation: prize-lift .48s cubic-bezier(.22,.73,.22,1); }
+  .roll[data-drop="rare"] .item.win, .roll[data-drop="epic"] .item.win, .roll[data-drop="top"] .item.win {
+    animation: prize-impact .72s cubic-bezier(.18,.65,.22,1);
+  }
+  .roll[data-drop="rare"] .reel-glint, .roll[data-drop="epic"] .reel-glint, .roll[data-drop="top"] .reel-glint {
+    animation: reel-unlock .68s ease-out both;
+  }
+  @keyframes prize-quiet { 0% { transform: scale(.97); } 100% { transform: scale(1); } }
+  @keyframes prize-lift { 0% { transform: scale(.96); } 44% { transform: translateY(-2px) scale(1.035); } 100% { transform: scale(1); } }
+  @keyframes prize-impact {
+    0% { transform: scale(.96); } 29% { transform: translateY(-3px) scale(1.065); }
+    64% { transform: translateY(1px) scale(.995); } 100% { transform: scale(1); }
+  }
   /* the line the strip stops under, with a little arrow at both ends */
   .roll-marker { position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; margin-left: -1px; z-index: 3;
                  pointer-events: none; transform-origin: 50% 50%;
-                 background: linear-gradient(180deg, #fff0ad, #e4ae39 50%, #fff0ad);
-                 box-shadow: 0 0 12px rgba(255, 200, 70, .85); }
-  .roll.spinning .roll-marker { animation: rollMarker .42s ease-in-out infinite alternate; }
-  .roll.slowing .roll-marker { animation-duration: .18s; box-shadow: 0 0 28px rgba(255, 130, 33, .98), 0 0 58px rgba(255, 204, 92, .38); }
-  @keyframes rollMarker { from { opacity: .72; transform: scaleY(.92); box-shadow: 0 0 8px rgba(255, 200, 70, .52); }
-                            to { opacity: 1; transform: scaleY(1.04); box-shadow: 0 0 21px rgba(255, 214, 102, .96); } }
+                 background: linear-gradient(180deg, #ffe59a, #ffcc6540 34%, transparent 49% 51%, #ffcc6540 66%, #ffe59a);
+                 filter: drop-shadow(0 0 4px #ffcf6790); }
+  .roll.slowing .roll-marker { filter: drop-shadow(0 0 6px #ffbd54cd); }
+  .roll.done .roll-marker { opacity: .62; }
   .roll-marker::before, .roll-marker::after { content: ""; position: absolute; left: 50%; margin-left: -7px;
                                               border: 7px solid transparent; }
   .roll-marker::before { top: 0; border-top-color: #ffd45a; border-bottom-width: 0; }
   .roll-marker::after { bottom: 0; border-bottom-color: #ffd45a; border-top-width: 0; }
+  .reel-meter { position: absolute; z-index: 4; left: 11px; right: 11px; bottom: 1px; height: 2px; border-radius: 2px;
+                pointer-events: none; overflow: hidden; background: #f8cc6626; }
+  .reel-meter b { display: block; height: 100%; transform: scaleX(0); transform-origin: left;
+                  border-radius: inherit; background: linear-gradient(90deg,#bd8030,#ffd165 72%,#fff1b4); }
   #fx { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
   #tab-case { position: relative; }
   .snd { position: absolute; right: 0; top: 0; width: 38px; height: 38px; border: 0; border-radius: 50%; z-index: 5;
          background: var(--card); color: var(--text); font-size: 18px; line-height: 1; cursor: pointer; }
   .snd:active { transform: scale(.94); }
   @media (prefers-reduced-motion: reduce) {
-    .item.top::after, .roll .item.win, .roll.spinning .roll-marker { animation: none; }
+    .item.top::after { animation: none; }
+    .roll .item { transition: none; }
+    .roll.opening .reel-glint, .roll.done[data-drop] .reel-glint, .roll.done[data-drop] .item.win { animation: none; }
   }
   .result { text-align: center; background: var(--card); border-radius: 14px; padding: 14px; margin-bottom: 12px;
             font-size: 15px; }
   .result b { color: var(--accent); font-size: 18px; }
+  .result[data-drop] { box-shadow: inset 0 1px 0 var(--drop-edge); }
+  .result[data-drop] b { color: var(--drop-edge); }
   h2 { font-size: 17px; margin: 16px 0 10px; }
   /* Live strip above the case: the latest drops of everyone, newest on the left. */
   .feed { margin: 0 0 8px; }
@@ -256,11 +295,6 @@
   .sk-stage { position: relative; width: min(78vw, 44vh); aspect-ratio: 1; will-change: transform; }
   .sk-aura { position: absolute; inset: -30%; border-radius: 50%; opacity: 0; will-change: transform, opacity;
              background: radial-gradient(circle, rgba(255, 214, 102, .95) 0%, rgba(255, 150, 40, .45) 34%, transparent 66%); }
-  .sk-rays { position: absolute; inset: -75%; border-radius: 50%; opacity: 0; transition: opacity .6s; pointer-events: none;
-             background: repeating-conic-gradient(from 0deg, rgba(255, 220, 110, .42) 0 6deg, transparent 6deg 16deg);
-             -webkit-mask-image: radial-gradient(circle, #000 0 16%, transparent 60%); mask-image: radial-gradient(circle, #000 0 16%, transparent 60%);
-             animation: skSpin 16s linear infinite; }
-  @keyframes skSpin { to { transform: rotate(360deg); } }
   .sk-ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
   .sk-ring-bg { fill: none; stroke: rgba(255, 255, 255, .12); stroke-width: 10; }
   .sk-ring-fg { fill: none; stroke: url(#skRg); stroke-width: 10; stroke-linecap: round; stroke-dasharray: 804.25; stroke-dashoffset: 804.25;
@@ -286,10 +320,6 @@
   .sk-status.warn { color: #ffb266; animation: skBlink .8s ease-in-out infinite; }
   .sk-status.bad { color: #ff7a7a; }
   @keyframes skBlink { 50% { opacity: .45; } }
-  .sk-flash { position: absolute; inset: 0; z-index: 7; background: #fff; opacity: 0; pointer-events: none; }
-  .sk.boom .sk-flash { animation: skFlash 1.15s ease-out forwards; }
-  @keyframes skFlash { 0% { opacity: 0; } 10% { opacity: .95; } 100% { opacity: 0; } }
-  .sk.boom .sk-rays { opacity: 1; }
   .sk.boom .sk-crate { animation: skBoom 1.1s cubic-bezier(.2, 1.3, .3, 1) forwards; }
   @keyframes skBoom { 0% { transform: scale(.9); } 35% { transform: scale(1.3) rotate(-4deg); } 100% { transform: scale(1.08); } }
   .sk.over .sk-crate { animation: skOver .09s linear infinite; }
@@ -313,7 +343,7 @@
   .sk-pop-sub { font-size: 14px; color: #d3cfee; }
   .sk-link { display: block; width: 100%; margin-top: 6px; padding: 10px; border: 0; background: none; color: #b9b4e0; font-size: 14px; }
   @media (prefers-reduced-motion: reduce) {
-    .sk-stars, .sk-rays, .sk-card::before, .sk-icon, .sk-phone, .sk-pop-emoji { animation: none; }
+    .sk-stars, .sk-card::before, .sk-icon, .sk-phone, .sk-pop-emoji { animation: none; }
   }
 
   /* ---- live draw overlay ---- */
@@ -352,12 +382,12 @@
   #lv-res .row { padding: 5px 0; } #lv-res b { color: #ffd45a; }
   #lv-proof { margin-top: 8px; font-size: 11px; color: #8b9aab; word-break: break-all; }
   #live-pill { position: fixed; right: 12px; bottom: 14px; z-index: 1999; background: #e0352b; color: #fff; border: 0; border-radius: 999px; padding: 10px 16px; font: 700 14px inherit; box-shadow: 0 6px 18px rgba(0,0,0,.4); }
-  #splash { position: fixed; inset: 0; z-index: 3000; overflow: hidden; background: #06080d; opacity: 1; transition: opacity .26s ease; }
+  #splash { position: fixed; inset: 0; z-index: 3000; overflow: hidden; background: #06080d; opacity: 1; transition: opacity .7s cubic-bezier(.32, .08, .28, 1); }
   #splash.leaving { opacity: 0; pointer-events: none; }
-  #splash-poster, #splash-video { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
-  #splash-poster { z-index: 2; opacity: 1; transition: opacity .18s ease; }
-  #splash-poster.leaving { opacity: 0; }
+  #splash-poster, #splash-video, #splash .splash-last-frame { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+  #splash-poster { z-index: 2; }
   #splash-video { z-index: 1; }
+  #splash .splash-last-frame { z-index: 2; pointer-events: none; }
   #splash-start { position: absolute; z-index: 3; inset: 0; display: block; padding: 0; border: 0; border-radius: 0; background: transparent; }
   #splash-start .splash-play { position: absolute; right: max(28px, env(safe-area-inset-right)); bottom: max(42px, calc(env(safe-area-inset-bottom) + 20px)); width: 0; height: 0; border-top: 18px solid transparent; border-bottom: 18px solid transparent; border-left: 29px solid #ffcf28; filter: drop-shadow(0 0 6px rgba(255,240,135,.95)) drop-shadow(0 0 16px rgba(255,190,0,.85)) drop-shadow(0 5px 10px rgba(0,0,0,.5)); }
   #splash-start:focus-visible { outline: 2px solid #fff0a3; outline-offset: -8px; }
@@ -366,9 +396,9 @@
 </head>
 <body>
 <div id="splash">
-  <img id="splash-poster" src="splash-ak47-poster.jpg?v=5" alt="" aria-hidden="true">
-  <video id="splash-video" playsinline preload="auto" aria-hidden="true">
-    <source src="splash-ak47.mp4?v=5" type="video/mp4">
+  <img id="splash-poster" src="splash-hq-v3.jpg?v=hq-audio-3" alt="" aria-hidden="true">
+  <video id="splash-video" playsinline webkit-playsinline preload="metadata" aria-hidden="true">
+    <source src="splash-hq-v3.mp4?v=hq-audio-3" type="video/mp4">
   </video>
   <button type="button" id="splash-start" aria-label="Запустить ролик со звуком"><span class="splash-play" aria-hidden="true"></span></button>
 </div>
@@ -386,7 +416,6 @@
   </div>
   <div class="sk-mid">
     <div class="sk-stage" id="sk-stage">
-      <div class="sk-rays"></div>
       <div class="sk-aura" id="sk-aura"></div>
       <svg class="sk-ring" viewBox="0 0 300 300" aria-hidden="true">
         <defs>
@@ -440,7 +469,6 @@
     <div class="sk-bar"><div id="sk-fill"></div></div>
     <div class="sk-status" id="sk-status">Встряхни телефон!</div>
   </div>
-  <div class="sk-flash"></div>
   <div class="sk-pop" id="sk-pop">
     <div class="sk-pop-card">
       <div class="sk-pop-emoji">🎁</div>
@@ -512,8 +540,8 @@
       <div class="feed-head"><span class="live-dot"></span><span>Live · последние дропы</span></div>
       <div class="feed-track" id="feed-track"></div>
     </div>
-    <div class="roll" id="roll"><div class="roll-marker"></div><div class="roll-track" id="track"></div></div>
-    <div class="result hidden" id="result"></div>
+    <div class="roll" id="roll"><div class="roll-marker" aria-hidden="true"></div><div class="roll-track" id="track"></div><div class="reel-glint" aria-hidden="true"></div><div class="reel-meter" aria-hidden="true"><b id="reel-meter-fill"></b></div></div>
+    <div class="result hidden" id="result" aria-live="polite"></div>
     <button type="button" id="spin">🎰 Крутить бесплатно</button>
     <div class="note" id="spin-note">Нажми — бот откроет кейс и пришлёт кнопку «🎰 Смотреть прокрутку».</div>
     <!-- Only on phones in Telegram (the script shows it); the bot decides when a shake counts. -->
@@ -623,6 +651,7 @@
   <div class="note" id="note"></div>
 </main>
 
+<script src="case-audio.js?v=hq-audio-3"></script>
 <script>
   const tg = window.Telegram && window.Telegram.WebApp;
   // Not initData: a page opened from a reply-keyboard button (the only kind that can sendData) gets none.
@@ -734,13 +763,16 @@
       ${chance ? `<span class="item-chance">${it.chance}%</span>` : ""}
       ${it.img ? `<img src="${it.img}?v=2" alt="" width="156" height="114" decoding="async" draggable="false">` : TICKET}
       <div class="item-wear">${it.wear}</div>
-      <div class="item-price">${it.price}</div>
+      <div class="item-price">${it.price.replace("₽", '<span class="ruble-coin">₽</span>')}</div>
     </div>`;
   $("items").innerHTML = ITEMS.map((it) => card(it)).join("");
   ITEMS.forEach((it) => { if (it.img) new Image().src = it.img + "?v=2"; });
 
-  // The strip: random cards (weighted like the case) with the prize at WIN; it slides so WIN stops under the line.
-  const CARD_W = 110 + 8, STRIP = 56, WIN = 48;
+  // The server-selected prize stays at WIN; the other cards are decoration.
+  const STRIP = 56, START = 3, WIN = 48, ROLL_MS = 5300, SEAT_MS = 330;
+  const reduceRoll = Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
+  const roll = $("roll"), track = $("track"), reelMeter = $("reel-meter-fill");
+  let reelPhase = "idle", reelFrame = 0, queuedRoll = 0;
   function weighted() {
     let r = Math.random() * 100;
     return ITEMS.find((it) => (r -= it.chance) < 0) || ITEMS[0];
@@ -749,227 +781,406 @@
     // At rest the strip shows every item in turn; a replay is drawn with the case's odds.
     const cards = Array.from({ length: STRIP }, (_, i) => (win ? weighted() : ITEMS[(ITEMS.length - i % ITEMS.length) % ITEMS.length]));
     if (win) cards[WIN] = win;
-    $("track").style.transition = "none";
-    $("track").innerHTML = cards.map((it) => card(it, false)).join("");
+    track.innerHTML = cards.map((it) => card(it, false)).join("");
   }
-  function slideTo(index, seconds, jitter = 0) {
-    const center = $("roll").clientWidth / 2;
-    const x = index * CARD_W + 55 - center + (Math.random() - .5) * jitter;
-    $("track").style.transition = seconds ? `transform ${seconds}s cubic-bezier(.08, .6, .12, 1)` : "none";
-    $("track").style.transform = `translateX(${-x}px)`;
+  function cardCenter(index) {
+    const item = track.children[index];
+    // A replay may continue while another tab hides the fixed-width strip.
+    return item.offsetWidth ? item.offsetLeft + item.offsetWidth / 2 : index * 118 + 55;
+  }
+  function centerReel(position) {
+    track.style.transform = `translate3d(${roll.clientWidth / 2 - position}px, 0, 0)`;
+  }
+  function rollTravel(progress) {
+    // Integrate smooth acceleration and braking, with a constant-speed middle.
+    const ramp = .16, coastEnd = .46;
+    const distance = ramp / 2 + (coastEnd - ramp) + (1 - coastEnd) / 2;
+    const shoulder = value => value ** 3 * (1 - value / 2);
+    if (progress <= ramp) return ramp * shoulder(progress / ramp) / distance;
+    if (progress <= coastEnd) return (progress - ramp / 2) / distance;
+    const brake = 1 - coastEnd;
+    return 1 - brake * shoulder((1 - progress) / brake) / distance;
   }
   fillStrip(null);
-  requestAnimationFrame(() => slideTo(3, 0));
+  requestAnimationFrame(() => { if (reelPhase === "idle") alignReel(); });
+  function alignReel() {
+    if (reelPhase !== "rolling") centerReel(cardCenter(reelPhase === "done" ? WIN : START));
+  }
+  window.addEventListener("resize", alignReel);
+  if (window.ResizeObserver) new ResizeObserver(alignReel).observe(roll);
 
-  // ---- Win effects: a hot burst from the prize card, then slowly fading embers. ----
+  // Rarity only decorates the reward after it lands. The bot chooses the prize.
+  const TIER = { tickets: 0, s167: 1, s500: 2, s833: 3, s1249: 4, ak: 5 };
+  const DROPS = [
+    { style: "tickets", sparks: 9, echo: 0, rain: 0, speed: 130, colors: ["#d6e0e8", "#9fb6c7"] },
+    { style: "common", sparks: 27, echo: 0, rain: 12, speed: 255, colors: ["#e5f2ff", "#96c5ff", "#679cfa"] },
+    { style: "common", sparks: 35, echo: 0, rain: 15, speed: 305, colors: ["#ecf6ff", "#8ec9ff", "#6b9cff"] },
+    { style: "rare", sparks: 46, echo: 16, rain: 20, speed: 365, colors: ["#fff0ff", "#dda9ff", "#a571ff", "#ffd699"] },
+    { style: "epic", sparks: 55, echo: 22, rain: 24, speed: 405, colors: ["#fff0fb", "#ffb2e9", "#f665d0", "#ffdc94"] },
+    { style: "top", sparks: 65, echo: 34, rain: 28, speed: 465, colors: ["#fff6d4", "#ffdd82", "#ffc05f", "#ff8a3d"] },
+  ];
+
+  // Small metal ₽ coins and short-lived gold sparks share one canvas.
   const FX = (() => {
     const cv = $("fx"), ctx = cv.getContext("2d");
-    const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let W = 0, H = 0, parts = [], rings = [], raf = 0, last = 0, run = 0, timers = [];
-    const rnd = (a, b) => a + Math.random() * (b - a);
+    let width = 0, height = 0, parts = [], raf = 0, last = 0, audibleBounces = 0, lastBounce = -Infinity;
+    const colors = ["#fff1b6", "#ffcd62", "#ffa446", "#ed7323"];
+    const random = (from, to) => from + Math.random() * (to - from);
+    const rimPoints = Array.from({ length: 22 }, (_, i) => {
+      const angle = i * Math.PI / 11;
+      return [Math.cos(angle), Math.sin(angle)];
+    });
     function resize() {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      W = window.innerWidth; H = window.innerHeight;
-      cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const scale = Math.min(window.devicePixelRatio || 1, 2);
+      width = window.innerWidth; height = window.innerHeight;
+      cv.width = Math.round(width * scale); cv.height = Math.round(height * scale);
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
     }
     window.addEventListener("resize", resize);
     resize();
 
-    function spark(x, y, colors, power = 1) {
-      const a = rnd(0, Math.PI * 2), v = rnd(180, 560) * power;
-      parts.push({ k: "spark", x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - rnd(80, 250),
-                   life: 0, max: rnd(.48, .98), size: rnd(1.4, 3.5), color: colors[(Math.random() * colors.length) | 0] });
-    }
-    function ember(x, y, colors, power = 1) {
-      const a = rnd(0, Math.PI * 2), d = rnd(20, 72) * power;
-      parts.push({ k: "ember", x: x + Math.cos(a) * d, y: y + Math.sin(a) * d, vx: rnd(-38, 38) * power,
-                   vy: rnd(-125, -35) * power, life: 0, max: rnd(.75, 1.55), size: rnd(1.5, 4.2),
-                   color: colors[(Math.random() * colors.length) | 0] });
-    }
-    function ring(x, y, color, delay = 0) { rings.push({ x, y, color, t: -delay, max: .64 }); }
-    function schedule(token, fn, ms) {
-      const id = setTimeout(() => { timers = timers.filter((v) => v !== id); if (token === run) fn(); }, ms);
-      timers.push(id);
+    function spark(x, y, speed, direction = random(0, Math.PI * 2), palette = colors, delay = 0) {
+      if (parts.length >= 180) return;
+      parts.push({ x, y, age: -delay, life: random(.27, .72), radius: random(.65, 1.65),
+        vx: Math.cos(direction) * speed, vy: Math.sin(direction) * speed - 65,
+        color: palette[Math.floor(random(0, palette.length))] });
     }
 
-    function frame(t) {
-      const dt = Math.min(.05, (t - last) / 1000 || .016);
-      last = t;
-      ctx.clearRect(0, 0, W, H);
+    function rainWave(count, delay, arrivalSpread) {
+      for (let i = 0; i < count; i++) {
+        const radius = random(4.9, 6.45);
+        const x = 8 + (width - 16) * (i + random(.12, .88)) / count;
+        const sign = i % 2 ? 1 : -1;
+        parts.push({ coin: true, x, y: -radius - random(4, 25), floor: height - radius - 4,
+          age: -(delay + random(0, arrivalSpread)), life: 1.35 + Math.sqrt(height / 245),
+          radius, vx: random(-24, 24), vy: random(150, 254),
+          pitch: random(-.47, .44), yaw: random(-.72, .72), roll: random(-.38, .38),
+          pitchRate: random(-6, 7), yawRate: random(7, 12) * sign, rollRate: random(-2.5, 2.5) });
+      }
+    }
+
+    function polygon(points) {
+      ctx.beginPath();
+      ctx.moveTo(points[0][0], points[0][1]);
+      points.slice(1).forEach(([x, y]) => ctx.lineTo(x, y));
+      ctx.closePath();
+    }
+
+    function drawCoin(p, alpha) {
+      const r = p.radius, thickness = r * .16;
+      const cosX = Math.cos(p.pitch), sinX = Math.sin(p.pitch);
+      const cosY = Math.cos(p.yaw), sinY = Math.sin(p.yaw);
+      const facing = cosX * cosY;
+      function project(x, y, z) {
+        const side = x * cosY + z * sinY;
+        const depth = z * cosY - x * sinY;
+        const scale = 42 / (42 - y * sinX - depth * cosX);
+        return [side * scale, (y * cosX - depth * sinX) * scale];
+      }
+      const faceZ = facing >= 0 ? thickness : -thickness;
+      const near = rimPoints.map(([x, y]) => project(x * r, y * r, faceZ));
+      const far = rimPoints.map(([x, y]) => project(x * r, y * r, -faceZ));
+      ctx.save();
+      const proximity = Math.max(0, 1 - (p.floor - p.y) / 34);
+      if (proximity > 0) {
+        ctx.globalAlpha = .38 * alpha * proximity;
+        ctx.fillStyle = "#080605";
+        ctx.beginPath(); ctx.ellipse(p.x, p.floor + r, r * 1.2, 1.25, 0, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.roll);
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = "#986028"; polygon(far); ctx.fill();
+      for (let i = 0; i < rimPoints.length; i++) {
+        const next = (i + 1) % rimPoints.length;
+        const [x, y] = rimPoints[i];
+        if ((-x * sinY * cosX + y * sinX) < -.12) continue;
+        const sheen = Math.max(0, .24 - .56 * y + .28 * x);
+        const red = 126 + Math.round(sheen * 83) - (i % 2) * 24;
+        ctx.fillStyle = `rgb(${red},${Math.round(red * .67)},${Math.round(red * .30)})`;
+        polygon([far[i], far[next], near[next], near[i]]); ctx.fill();
+      }
+      const shine = Math.sin(p.yaw + .48) * r * .54;
+      const metal = ctx.createLinearGradient(-r + shine, -r, r + shine, r * .72);
+      metal.addColorStop(0, "#fff1af"); metal.addColorStop(.27, "#dd9a3d");
+      metal.addColorStop(.49, "#ffdc7e"); metal.addColorStop(.62, "#be812d"); metal.addColorStop(1, "#7b4d20");
+      ctx.fillStyle = metal; polygon(near); ctx.fill();
+      ctx.strokeStyle = "#ffdfa073"; ctx.lineWidth = .48; ctx.stroke();
+      if (Math.abs(facing) > .30) {
+        const [cx, cy] = project(0, 0, faceZ);
+        const [ax, ay] = project(facing < 0 ? -1 : 1, 0, faceZ);
+        const [bx, by] = project(0, 1, faceZ);
+        ctx.transform(ax - cx, ay - cy, bx - cx, by - cy, cx, cy);
+        ctx.strokeStyle = "#9b6429"; ctx.lineWidth = .59;
+        ctx.beginPath(); ctx.arc(0, 0, r * .82, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = "#ffedaa"; ctx.lineWidth = .42;
+        ctx.beginPath(); ctx.arc(0, 0, r * .82, Math.PI, Math.PI * 1.75); ctx.stroke();
+        ctx.font = "bold " + (r * 1.32) + "px 'Segoe UI', sans-serif";
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillStyle = "#ffe89b"; ctx.fillText("₽", .13, .69);
+        ctx.fillStyle = "#5e3718"; ctx.fillText("₽", 0, .35);
+      }
+      ctx.restore();
+    }
+
+    function moveCoin(p, dt, now) {
+      p.floor = height - p.radius - 4;
+      p.vy += 400 * dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.pitch += p.pitchRate * dt;
+      p.yaw += p.yawRate * dt;
+      p.roll += p.rollRate * dt;
+      if (p.y < p.floor) return;
+      const impact = p.vy;
+      p.y = p.floor;
+      p.vy = impact > 42 ? -impact * .20 : 0;
+      p.vx *= impact > 42 ? .68 : .88;
+      p.pitchRate *= .75; p.yawRate *= .75; p.rollRate *= .75;
+      if (impact > 95 && audibleBounces < 2 && now - lastBounce > 83 && !document.hidden &&
+          p.x > 0 && p.x < width && p.floor > 0 && p.floor < height) {
+        audibleBounces++;
+        lastBounce = now;
+        SFX.reel("coin", { strength: Math.min(1, impact / 250) });
+      }
+    }
+
+    function frame(now) {
+      const dt = Math.min(.045, (now - last) / 1000);
+      last = now;
+      ctx.clearRect(0, 0, width, height);
+      const coins = [];
       ctx.globalCompositeOperation = "lighter";
-      for (const r of rings) {
-        r.t += dt;
-        if (r.t < 0) continue;
-        const k = r.t / r.max;
-        ctx.globalAlpha = Math.max(0, 1 - k) * .82;
-        ctx.lineWidth = 5 * (1 - k) + .7;
-        ctx.strokeStyle = r.color;
-        ctx.beginPath(); ctx.arc(r.x, r.y, 16 + k * 170, 0, 6.2832); ctx.stroke();
-      }
-      rings = rings.filter((r) => r.t < r.max);
-
-      for (const p of parts) {
-        p.life += dt;
-        const a = Math.max(0, 1 - p.life / p.max);
-        if (p.k === "spark") {
-          p.vy += 620 * dt; p.vx *= 1 - 2.5 * dt; p.vy *= 1 - 1.25 * dt;
-          const px = p.x, py = p.y;
-          p.x += p.vx * dt; p.y += p.vy * dt;
-          ctx.globalAlpha = a;
-          ctx.strokeStyle = p.color;
-          ctx.lineWidth = p.size * (.45 + a * .65);
-          ctx.lineCap = "round";
-          ctx.beginPath(); ctx.moveTo(px - p.vx * .022, py - p.vy * .022); ctx.lineTo(p.x, p.y); ctx.stroke();
-          ctx.fillStyle = "#fff7c7";
-          ctx.beginPath(); ctx.arc(p.x, p.y, p.size * a * .38, 0, 6.2832); ctx.fill();
-        } else {
-          p.vy += 30 * dt;
-          p.x += p.vx * dt; p.y += p.vy * dt;
-          ctx.globalAlpha = a * .9;
-          ctx.fillStyle = p.color;
-          ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (.45 + a * .55), 0, 6.2832); ctx.fill();
+      ctx.lineCap = "round";
+      parts = parts.filter((p) => {
+        p.age += dt;
+        if (p.age < 0) return true;
+        if (p.age >= p.life) return false;
+        const alpha = Math.min(1, (1 - p.age / p.life) * 1.5);
+        if (p.coin) {
+          moveCoin(p, dt, now);
+          coins.push([p, alpha]);
+          return true;
         }
-      }
-      parts = parts.filter((p) => p.life < p.max);
+        const x = p.x, y = p.y;
+        p.vy += 450 * dt;
+        p.vx *= Math.exp(-2.6 * dt);
+        p.vy *= Math.exp(-1.25 * dt);
+        p.x += p.vx * dt; p.y += p.vy * dt;
+        ctx.globalAlpha = alpha * .86;
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = p.radius;
+        ctx.beginPath(); ctx.moveTo(x - p.vx * .02, y - p.vy * .02); ctx.lineTo(p.x, p.y); ctx.stroke();
+        ctx.fillStyle = "#fff5cf";
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.radius * .52, 0, Math.PI * 2); ctx.fill();
+        return true;
+      });
       ctx.globalCompositeOperation = "source-over";
+      coins.forEach(([p, alpha]) => drawCoin(p, alpha));
       ctx.globalAlpha = 1;
-      raf = parts.length || rings.length ? requestAnimationFrame(frame) : 0;
-      if (!raf) ctx.clearRect(0, 0, W, H);
+      raf = parts.length ? requestAnimationFrame(frame) : 0;
+      if (!raf) ctx.clearRect(0, 0, width, height);
     }
-    function kick() { if (!raf) { last = performance.now(); raf = requestAnimationFrame(frame); } }
+
+    function kick() {
+      if (!raf) { last = performance.now(); raf = requestAnimationFrame(frame); }
+    }
 
     return {
       clear() {
-        run++;
-        timers.forEach(clearTimeout); timers = [];
-        parts = []; rings = []; ctx.clearRect(0, 0, W, H);
+        cancelAnimationFrame(raf); raf = 0; parts = []; ctx.clearRect(0, 0, width, height);
+        audibleBounces = 0; lastBounce = -Infinity;
       },
-      win(x, y, color, tier) {
-        const token = ++run;
-        const fire = ["#fff9d6", "#ffd45a", "#ff9c27", "#ff5a1f", "#d92512"];
-        const sparks = Math.round([24, 42, 60, 82, 108, 146][tier] * (reduce ? .35 : 1));
-        const embers = Math.round([8, 16, 24, 34, 46, 64][tier] * (reduce ? .35 : 1));
-        for (let i = 0; i < sparks; i++) spark(x, y, fire, 1 + tier * .08);
-        for (let i = 0; i < embers; i++) ember(x, y, fire, 1 + tier * .05);
-        ring(x, y, "#ffd45a"); ring(x, y, "#ff6b24", .1); ring(x, y, color, .18);
-        if (tier >= 3 && !reduce) schedule(token, () => {
-          for (let i = 0; i < 30 + tier * 8; i++) spark(x, y, fire, .72 + tier * .05);
-          for (let i = 0; i < 18 + tier * 5; i++) ember(x, y, fire, .9);
-          ring(x, y, "#fff3bf"); kick();
-        }, 300);
+      open(bounds) {
+        if (reduceRoll || !bounds.width) return;
+        const x = bounds.left + bounds.width / 2;
+        for (let i = 0; i < 11; i++) {
+          const direction = i % 2 ? random(-.48, .24) : random(Math.PI - .24, Math.PI + .48);
+          spark(x + random(-4, 4), bounds.top + 10, random(89, 218), direction, colors, random(0, .095));
+        }
+        kick();
+      },
+      roll(x, y, accent) {
+        if (reduceRoll) return;
+        const count = accent ? 5 : 2;
+        for (let i = 0; i < count; i++) spark(x + random(-3, 3), y + random(-3, 3), random(60, 145), random(-2.9, -.4));
+        kick();
+      },
+      win(x, y, profile) {
+        const count = reduceRoll ? Math.min(12, profile.sparks) : profile.sparks;
+        for (let i = 0; i < count; i++) {
+          spark(x + random(-20, 20), y + random(-8, 8), random(profile.speed * .36, profile.speed),
+            random(-Math.PI, Math.PI), profile.colors);
+        }
+        if (!reduceRoll) {
+          for (let i = 0; i < profile.echo; i++) {
+            const direction = (i % 2 ? 0 : -Math.PI) + random(-.63, .63);
+            spark(x + random(-34, 34), y, random(profile.speed * .34, profile.speed * .8),
+              direction, profile.colors, random(.14, .28));
+          }
+          if (profile.rain && width > 32) {
+            const first = profile.echo ? Math.ceil(profile.rain * .59) : profile.rain;
+            rainWave(first, .04, .41);
+            if (first < profile.rain) rainWave(profile.rain - first, .43, .49);
+          }
+        }
         kick();
       },
     };
   })();
 
-  // Light haptic "ticks" while the strip slides: one every time a new card passes under the line.
-  let tickRaf = 0;
-  function tickWhileSliding(ms) {
-    if (!inTelegram || !tg.HapticFeedback || !window.DOMMatrixReadOnly) return;
-    cancelAnimationFrame(tickRaf);
-    const track = $("track"), end = performance.now() + ms;
-    let lastIdx = -1, lastAt = 0;
-    const loop = (now) => {
-      const tx = new DOMMatrixReadOnly(getComputedStyle(track).transform).m41;
-      const idx = Math.floor(($("roll").clientWidth / 2 - tx) / CARD_W);
-      if (idx !== lastIdx) {
-        if (lastIdx !== -1 && now - lastAt > 70) { tg.HapticFeedback.selectionChanged(); lastAt = now; }
-        lastIdx = idx;
-      }
-      if (now < end) tickRaf = requestAnimationFrame(loop);
-    };
-    tickRaf = requestAnimationFrame(loop);
-  }
-  const TIER = { tickets: 0, s167: 1, s500: 2, s833: 3, s1249: 4, ak: 5 };
+  function animateReel(onDone) {
+    const start = cardCenter(START), finish = cardCenter(WIN);
+    const step = cardCenter(START + 1) - start;
+    const duration = reduceRoll ? 360 : ROLL_MS;
+    const started = performance.now();
+    let lastCard = START, lastHaptic = -Infinity, lastSpark = -Infinity;
+    reelPhase = "rolling";
+    roll.classList.remove("opening");
 
-  // ---- Sounds: studio-made one-shots played through Web Audio so they stay locked to the strip. ----
-  // open: the tap · roll: ticks timed to the strip's slow-down (starts together with the slide) · win / top / tickets: the prize.
-  // Browsers only start audio after a tap on the page, so a replay opened straight from the chat may stay silent. That's fine.
+    function frame(now) {
+      const progress = Math.min(1, Math.max(0, (now - started) / duration));
+      const travel = reduceRoll ? 1 : Math.min(1, progress * duration / (duration - SEAT_MS));
+      const seating = !reduceRoll && travel === 1 && progress < 1;
+      const settle = Math.max(0, (progress * duration - (duration - SEAT_MS)) / SEAT_MS);
+      const offset = 9 * (1 - settle) ** 2 * Math.cos(settle * Math.PI * 1.35);
+      const position = reduceRoll || progress === 1 ? finish
+        : seating ? finish + offset : start + (finish - start + 9) * rollTravel(travel);
+      centerReel(position);
+      reelMeter.style.transform = `scaleX(${progress})`;
+      roll.classList.toggle("slowing", !reduceRoll && travel > .61 && progress < 1);
+      roll.classList.toggle("seating", seating);
+      const current = Math.min(WIN, START + Math.round((position - start) / Math.max(1, step)));
+      if (!reduceRoll && current !== lastCard) {
+        track.children[lastCard].classList.remove("at-marker");
+        track.children[current].classList.add("at-marker");
+        lastCard = current;
+        const visible = !document.hidden && roll.clientWidth > 0;
+        const accent = travel > .73;
+        if (visible) SFX.reel("tick", { progress: travel, accent });
+        if (visible && now - lastHaptic >= 70) {
+          if (inTelegram) tg.HapticFeedback?.selectionChanged?.();
+          lastHaptic = now;
+        }
+        if (visible && now - lastSpark >= 103 && progress > .10) {
+          const marker = roll.getBoundingClientRect();
+          FX.roll(marker.left + marker.width / 2, marker.top + 9, accent);
+          lastSpark = now;
+        }
+      }
+      if (progress < 1) reelFrame = requestAnimationFrame(frame);
+      else { reelFrame = 0; reelPhase = "done"; onDone(); }
+    }
+    reelFrame = requestAnimationFrame(frame);
+  }
+
+  // The reel and shake effects use one gesture-unlocked Web Audio context.
   const SFX = (() => {
-    const FILES = { open: "sfx_open.mp3", roll: "sfx_roll.mp3", win: "sfx_win.mp3", top: "sfx_win_top.mp3", tickets: "sfx_win_tickets.mp3" };
-    const bufs = {};
-    let ctx = null, gain = null, loading = null, on = true, unlocked = false;
+    let ctx = null, gain = null, on = true, pending = null, warming = false;
     try { on = localStorage.getItem("sfx") !== "off"; } catch (e) { /* storage can be unavailable: default to on */ }
     const btn = $("snd");
     const paint = () => { btn.textContent = on ? "🔊" : "🔇"; btn.setAttribute("aria-pressed", String(on)); btn.title = on ? "Звук включён" : "Звук выключен"; };
     function ensure() {
-      if (ctx) return ctx;
+      if (ctx && ctx.state !== "closed") return ctx;
+      pending = null;
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return null;
-      try { ctx = new AC(); gain = ctx.createGain(); gain.gain.value = 0.9; gain.connect(ctx.destination); } catch (e) { ctx = null; }
+      try { ctx = new AC(); gain = ctx.createGain(); gain.gain.value = on ? .9 : 0; gain.connect(ctx.destination); } catch (e) { ctx = null; gain = null; }
       return ctx;
     }
-    function load() {   // fetch + decode once; a missing file only silences that one sound
-      if (loading) return loading;
-      const c = ensure();
-      if (!c) return Promise.resolve();
-      loading = Promise.all(Object.entries(FILES).map(async ([name, file]) => {
-        try {
-          const ab = await (await fetch(file + "?v=1")).arrayBuffer();
-          bufs[name] = await new Promise((ok, fail) => { const p = c.decodeAudioData(ab, ok, fail); if (p && p.catch) p.catch(fail); });
-        } catch (e) { /* ignore */ }
-      }));
-      return loading;
-    }
-    function unlock() {   // call from a tap
+    function unlock() {
+      if (!on) return Promise.resolve(false);
       const c = ensure();
       if (!c) return Promise.resolve(false);
-      const ready = c.state === "running" ? Promise.resolve() : c.resume().catch(() => {});
-      load();
-      return ready.then(() => { unlocked = c.state === "running"; return unlocked; });
+      if (c.state === "running") return Promise.resolve(true);
+      if (pending) return pending;
+      try {
+        pending = Promise.resolve(c.resume()).then(() => c.state === "running", () => false)
+          .finally(() => { pending = null; });
+      } catch (e) { return Promise.resolve(false); }
+      return pending;
     }
-    function play(name, offset = 0) {
-      if (!on || !unlocked || !ctx || ctx.state !== "running" || !bufs[name]) return false;
-      try { const s = ctx.createBufferSource(); s.buffer = bufs[name]; s.connect(gain); s.start(0, offset); return true; } catch (e) { return false; }
+    function warm() {
+      if (warming) return;
+      warming = true;
+      // Build effect buffers after the intro, instead of blocking its first tap.
+      setTimeout(() => {
+        warming = false;
+        const output = rig();
+        if (!output) return;
+        try { window.YooCaseAudio?.prime?.(output); } catch (e) { /* the reel remains usable without audio */ }
+      }, 50);
     }
     function toggle() {
       on = !on;
       try { localStorage.setItem("sfx", on ? "on" : "off"); } catch (e) { /* ignore */ }
+      if (gain) gain.gain.setTargetAtTime(on ? .9 : 0, ctx.currentTime, .015);
       paint();
       if (on) unlock();
     }
     paint();
     btn.addEventListener("click", toggle);
-    document.addEventListener("pointerdown", unlock, { once: true, passive: true });
-    // rig: the audio context and its output while sound is on and unlocked (null otherwise): the shake sounds are synthesised on it
-    const rig = () => (on && unlocked && ctx && ctx.state === "running" ? { ctx, out: gain } : null);
-    return { load, unlock, play, toggle, rig };
+    ["pointerup", "touchend", "keydown"].forEach(name => document.addEventListener(name, unlock, { passive: true }));
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden && ctx && on) unlock();
+    });
+    const rig = () => (on && ctx?.state === "running" ? { ctx, out: gain } : null);
+    function reel(cue, options) {
+      const output = rig();
+      if (output) {
+        try { window.YooCaseAudio?.[cue]?.(output, options); } catch (e) { /* audio never interrupts the result */ }
+      }
+    }
+    return { unlock, warm, rig, reel };
   })();
 
   // text: the bot's own result (HTML) when it answered right here; null when replaying from the chat.
   function replay(code, text = null, done = null) {
     const win = ITEMS.find((it) => it.code === code);
     if (!win) return;
-    FEED.hold(7500);   // the live strip would show this very drop before the roulette stops
+    const tier = TIER[win.code] ?? 0, profile = DROPS[tier];
+    const result = $("result");
+    const leadIn = reduceRoll ? 120 : 320;
+    FEED.hold(leadIn + (reduceRoll ? 360 : ROLL_MS) + 700);
     if (!text) $("spin").classList.add("hidden");
     $("spin-note").textContent = "";
-    $("result").classList.add("hidden");
-    $("roll").classList.remove("done", "slowing");
-    $("roll").classList.add("spinning");
+    result.classList.add("hidden");
+    delete result.dataset.drop;
+    delete roll.dataset.drop;
+    roll.classList.remove("done", "slowing", "seating");
+    roll.classList.add("spinning", "opening");
+    roll.setAttribute("aria-busy", "true");
+    cancelAnimationFrame(reelFrame);
+    clearTimeout(queuedRoll);
+    reelPhase = "queued";
     FX.clear();
     fillStrip(win);
-    slideTo(3, 0);
-    $("track").offsetWidth;
-    setTimeout(() => {
-      slideTo(WIN, 6.5, 16);
-      tickWhileSliding(6500);
-      SFX.play("roll", 0.3);
-      setTimeout(() => $("roll").classList.add("slowing"), 5100);
-    }, 300);
-    setTimeout(() => {
-      const winCard = $("track").children[WIN];
+    track.children[START].classList.add("at-marker");
+    centerReel(cardCenter(START));
+    reelMeter.style.transform = "scaleX(0)";
+    if (!document.hidden && roll.clientWidth > 0) {
+      FX.open(roll.getBoundingClientRect());
+      SFX.reel("open");
+    }
+    queuedRoll = setTimeout(() => animateReel(() => {
+      const winCard = track.children[WIN];
+      track.querySelector(".at-marker")?.classList.remove("at-marker");
       winCard.classList.add("win");
-      $("roll").classList.remove("spinning", "slowing");
-      $("roll").classList.add("done");
-      const box = winCard.getBoundingClientRect();
-      FX.win(box.left + box.width / 2, box.top + box.height / 2, win.rarity, TIER[win.code] ?? 0);
-      SFX.play(win.code === "ak" ? "top" : win.img ? "win" : "tickets");
-      if (inTelegram) tg.HapticFeedback.notificationOccurred("success");
-      $("result").classList.remove("hidden");
-      $("result").innerHTML = text ? text.replace(/\n/g, "<br>") : win.img
+      roll.classList.remove("spinning", "slowing", "seating");
+      roll.classList.add("done");
+      roll.dataset.drop = result.dataset.drop = profile.style;
+      roll.setAttribute("aria-busy", "false");
+      alignReel();
+      if (!document.hidden && roll.clientWidth > 0) {
+        const box = winCard.getBoundingClientRect();
+        FX.win(box.left + box.width / 2, box.top + box.height / 2, profile);
+        SFX.reel("lock", { tier, skin: Boolean(win.img) });
+        if (inTelegram) tg.HapticFeedback?.notificationOccurred?.("success");
+      }
+      result.innerHTML = text ? text.replace(/\n/g, "<br>") : win.img
         ? `🎉 Тебе выпал скин <b>${win.price}</b><br>${win.wear}<br><br>Он уже в «🎒 Мои призы» в боте.`
         : `🎟 <b>+3 билета</b> в розыгрыше!<br><br>Следующий бесплатный кейс — завтра.`;
+      result.classList.remove("hidden");
       // A skin: the way to take it, right under the result (opens «Мои призы» in the bot).
       if (win.img && inTelegram) {
         const take = document.createElement("button");
@@ -980,11 +1191,11 @@
           tg.openTelegramLink(`https://t.me/${BOT}?start=prizes`);
           tg.close();
         });
-        $("result").appendChild(document.createElement("br"));
-        $("result").appendChild(take);
+        result.appendChild(document.createElement("br"));
+        result.appendChild(take);
       }
       if (done) done();
-    }, 7000);
+    }), leadIn);
   }
 
   // The page asks the bot directly (through the ngrok tunnel) and the strip stops on the prize here.
@@ -1083,14 +1294,26 @@
       if (!live) { setOffline(inTelegram ? "Открой приложение кнопкой в боте — так Telegram подтвердит твой аккаунт." : "Открой этот раздел из бота в Telegram, чтобы увидеть личный прогресс."); return; }
       busy = true;
       try {
-        const response = await fetch(API.replace(/\/$/, "") + "/api/progress", {
-          method: "POST", headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" },
-          body: JSON.stringify({ initData: tg.initData, action, code }),
-        });
-        const data = await response.json();
-        if (data.error) setOffline(data.error);
-        else render(data);
-      } catch (e) {
+        const attempts = action === "state" ? 3 : 2;
+        for (let attempt = 0; attempt < attempts; attempt++) {
+          const ctl = new AbortController();
+          const timer = setTimeout(() => ctl.abort(), 7000);
+          try {
+            const response = await fetch(API.replace(/\/$/, "") + "/api/progress", {
+              method: "POST", headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" },
+              body: JSON.stringify({ initData: tg.initData, action, code }), cache: "no-store", signal: ctl.signal,
+            });
+            const data = await response.json();
+            if (data.error) { setOffline(data.error); return; }
+            if (!response.ok) throw new Error("progress response " + response.status);
+            render(data);
+            return;
+          } catch (e) {
+            if (attempt + 1 < attempts) await new Promise((resolve) => setTimeout(resolve, 450 * (attempt + 1)));
+          } finally {
+            clearTimeout(timer);
+          }
+        }
         setOffline("Не получилось загрузить прогресс. Проверь соединение и попробуй ещё раз.");
       } finally { busy = false; }
     }
@@ -1119,7 +1342,7 @@
     button.disabled = true;
     button.textContent = bonus ? "🌀 Открываем суперкейс…" : "🎰 Крутим…";
     SHAKE.lock(true);
-    SFX.unlock().then(() => SFX.play("open"));
+    SFX.unlock();
     const reset = () => { button.disabled = false; button.textContent = "🎰 Крутить бесплатно"; SHAKE.lock(false); SHAKE.refresh(); };
     let data;
     try {
@@ -1279,10 +1502,10 @@
       };
     })();
 
-    // ---- Particles on their own canvas inside the stage: sparks thrown by the shaking, embers, lightning, the final burst. ----
+    // ---- Gold sparks during the shake and when the bonus case unlocks. ----
     const FXS = (() => {
       const cv = $("sk-cv"), ctx = cv.getContext("2d");
-      let W = 0, H = 0, cx = 0, cy = 0, R = 100, parts = [], bolts = [], rings = [], raf = 0, last = 0, on = false;
+      let W = 0, H = 0, cx = 0, cy = 0, R = 100, parts = [], raf = 0, last = 0, on = false;
       const COLORS = ["#fff9d6", "#ffd45a", "#ff9c27", "#ff5a1f", "#d92512"];
       const pick = () => COLORS[(Math.random() * COLORS.length) | 0];
       function locate() { const b = stage.getBoundingClientRect(); cx = b.left + b.width / 2; cy = b.top + b.height / 2; R = b.width / 2; }
@@ -1304,14 +1527,9 @@
         parts.push({ k: "e", x: cx + Math.cos(a) * d, y: cy + Math.sin(a) * d * .8, vx: rnd(-12, 12), vy: rnd(-70, -25) * (.6 + p),
                      life: 0, max: rnd(.9, 1.7), size: rnd(1.6, 3.6), c: Math.random() < .7 ? "#ffcf6a" : "#ffffff" });
       }
-      function ring(color, delay = 0, speed = 1) { rings.push({ color, t: -delay, max: .8 / speed }); }
-      function bolt() {   // a jagged flash from the crate towards the ring
-        const a = rnd(0, 6.283), pts = [], steps = 6;
-        for (let i = 0; i <= steps; i++) {
-          const d = R * (.3 + .8 * i / steps), j = i === 0 || i === steps ? 0 : rnd(-R * .09, R * .09);
-          pts.push([cx + Math.cos(a) * d - Math.sin(a) * j, cy + Math.sin(a) * d + Math.cos(a) * j]);
-        }
-        bolts.push({ pts, life: 0, max: .12 });
+      function flare(count, power) {
+        const limit = Math.min(reduce ? 6 : count, 260 - parts.length);
+        for (let i = 0; i < limit; i++) spark(rnd(-1, 1), rnd(-1, 1), power);
       }
       function burst() {
         const sparks = reduce ? 46 : 150, embers = reduce ? 18 : 68;
@@ -1320,30 +1538,13 @@
           parts.push({ k: "s", x: cx, y: cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0, max: rnd(.6, 1.3), size: rnd(1.8, 4), c: pick() });
         }
         for (let i = 0; i < embers; i++) ember(1.25);
-        ring("#ffd45a"); ring("#ff6b24", .08); ring("#fff3bf", .18, .8);
       }
       function frame(t) {
         if (!on) return;
         const dt = Math.min(.05, (t - last) / 1000 || .016);
         last = t;
         ctx.clearRect(0, 0, W, H);
-        for (const r of rings) {
-          r.t += dt;
-          if (r.t < 0) continue;
-          const k = r.t / r.max;
-          ctx.globalAlpha = Math.max(0, 1 - k); ctx.lineWidth = 6 * (1 - k) + 1; ctx.strokeStyle = r.color;
-          ctx.beginPath(); ctx.arc(cx, cy, R * (.55 + k * 1.9), 0, 6.2832); ctx.stroke();
-        }
-        rings = rings.filter((r) => r.t < r.max);
         ctx.globalCompositeOperation = "lighter";
-        for (const b of bolts) {
-          b.life += dt;
-          const a = Math.max(0, 1 - b.life / b.max);
-          ctx.globalAlpha = a * .55; ctx.strokeStyle = "#7ee7ff"; ctx.lineWidth = 5; ctx.lineJoin = "round";
-          ctx.beginPath(); b.pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke();
-          ctx.globalAlpha = a; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.6; ctx.stroke();
-        }
-        bolts = bolts.filter((b) => b.life < b.max);
         for (const p of parts) {
           if (p.k !== "s" && p.k !== "e") continue;
           p.life += dt;
@@ -1356,8 +1557,8 @@
             ctx.beginPath(); ctx.moveTo(px - p.vx * .014, py - p.vy * .014); ctx.lineTo(p.x, p.y); ctx.stroke();
           } else {
             p.x += p.vx * dt; p.y += p.vy * dt;
-            ctx.globalAlpha = a * .8; ctx.fillStyle = p.c;
-            ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (.5 + a * .6), 0, 6.2832); ctx.fill();
+            ctx.globalAlpha = a * .8; ctx.strokeStyle = p.c; ctx.lineWidth = p.size * .6;
+            ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * .028, p.y - p.vy * .028); ctx.stroke();
           }
         }
         ctx.globalCompositeOperation = "source-over";
@@ -1367,8 +1568,8 @@
       }
       return {
         start() { on = true; resize(); last = performance.now(); cancelAnimationFrame(raf); raf = requestAnimationFrame(frame); },
-        stop() { on = false; cancelAnimationFrame(raf); parts = []; rings = []; bolts = []; ctx.clearRect(0, 0, W, H); },
-        spark, ember, ring, bolt, burst,
+        stop() { on = false; cancelAnimationFrame(raf); parts = []; ctx.clearRect(0, 0, W, H); },
+        spark, ember, flare, burst,
         get count() { return parts.length; },
       };
     })();
@@ -1528,10 +1729,10 @@
           for (let i = 0; i < n; i++) FXS.spark(r.dx, r.dy, k);
         }
         if (s > .08 && FXS.count < 260 && Math.random() < dt * (6 + s * 26)) FXS.ember(s);
-        if (s > .45 && k > .35 && now - r.lastBolt > 110) { r.lastBolt = now; FXS.bolt(); }
+        if (s > .45 && k > .35 && now - r.lastFlare > 160) { r.lastFlare = now; FXS.flare(6, k); }
         if (r.mil < 3 && r.p >= (r.mil + 1) * .25) {   // 25 / 50 / 75 %
           dots[r.mil].classList.add("on");
-          SND.milestone(r.mil); haptic("heavy"); FXS.ring("#ffd45a", 0, 1.4);
+          SND.milestone(r.mil); haptic("heavy"); FXS.flare(18, .8);
           r.mil++;
         }
         const warn = r.shaken && r.idle > .9 && r.p < 1;
@@ -1545,7 +1746,7 @@
 
     function openStage(token) {
       run = { token, p: 0, shown: 0, idle: 0, env: 0, gx: 0, gy: 0, gz: 0, haveG: false, dx: 0, dy: 0, last: performance.now(),
-              mil: 0, finishing: false, shaken: false, lastRattle: 0, lastHaptic: 0, lastBolt: 0, pc: "", msg: "" };
+              mil: 0, finishing: false, shaken: false, lastRattle: 0, lastHaptic: 0, lastFlare: 0, pc: "", msg: "" };
       document.body.classList.add("sk-lock");
       ov.className = "sk";
       head.textContent = "Трясти!"; hint.textContent = `Встряхивай телефон около ${SECONDS} секунд`;
@@ -1584,7 +1785,7 @@
       crate.style.transform = ""; stage.style.transform = "";
       head.textContent = "Заряд полный!"; hint.textContent = "";
       status.className = "sk-status"; status.textContent = "Открываем суперкейс…";
-      FXS.ring("#ffffff", 0, 1.6);
+      FXS.flare(26, 1);
       haptic("heavy");
       const [res] = await Promise.all([call("finish", { token: r.token }), wait(850)]);
       if (run !== r) { refresh(); return; }   // closed in the meantime
@@ -1927,7 +2128,7 @@
       }
     }
     window.scrollTo(0, 0);
-    if (name === "case") { SFX.load(); FEED.start(); SHAKE.refresh(); } else { FEED.stop(); }
+    if (name === "case") { FEED.start(); SHAKE.refresh(); } else { FEED.stop(); }
     if (name === "progress") PROGRESS.refresh();
   }
   document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
@@ -1935,36 +2136,107 @@
 
   const SPLASH = (() => {
     const splash = $("splash"), poster = $("splash-poster"), video = $("splash-video"), start = $("splash-start");
-    const posterTime = 1;
-    let closed = false;
+    let closed = false, starting = false, started = false, faded = false;
+    let loadTimer, stallTimer, maxTimer;
+    let resolve;
+    const finished = new Promise(done => { resolve = done; });
     video.pause();
+    function finish() {
+      if (faded) return;
+      faded = true;
+      clearTimeout(fallback);
+      splash.removeEventListener("transitionend", onFade);
+      splash.remove();
+      video.removeAttribute("src");
+      video.querySelector("source")?.removeAttribute("src");
+      try { video.load(); } catch (e) { /* release a stalled decoder after the splash is gone */ }
+      resolve();
+      if (!document.hidden) SFX.warm();
+    }
+    function onFade(event) {
+      if (event.target === splash && event.propertyName === "opacity") finish();
+    }
+    let fallback;
     function close() {
       if (closed) return;
       closed = true;
+      clearTimeout(loadTimer);
+      clearTimeout(stallTimer);
+      clearTimeout(maxTimer);
+      document.removeEventListener("visibilitychange", onVisibility);
+      if (reduceRoll || document.hidden) {
+        video.pause();
+        finish();
+        return;
+      }
+      // Keep the decoded frame visible while the WebView fades the overlay.
+      if (video.videoWidth && video.videoHeight && video.readyState >= 2) {
+        try {
+          const frame = document.createElement("canvas");
+          frame.className = "splash-last-frame";
+          frame.setAttribute("aria-hidden", "true");
+          frame.width = Math.min(360, video.videoWidth);
+          frame.height = Math.round(frame.width * video.videoHeight / video.videoWidth);
+          const context = frame.getContext("2d");
+          if (context) {
+            context.drawImage(video, 0, 0, frame.width, frame.height);
+            splash.appendChild(frame);
+          }
+        } catch (e) { /* The video itself remains visible if a frame cannot be copied. */ }
+      }
       video.pause();
+      fallback = setTimeout(finish, 850);
+      splash.addEventListener("transitionend", onFade);
       splash.classList.add("leaving");
-      setTimeout(() => splash.remove(), 280);
     }
-    function cuePosterFrame() {
-      if (Number.isFinite(video.duration)) video.currentTime = Math.min(posterTime, Math.max(0, video.duration - .05));
-    }
-    if (video.readyState >= 1) cuePosterFrame();
-    else video.addEventListener("loadedmetadata", cuePosterFrame, { once: true });
-    start.addEventListener("click", () => {
+    video.addEventListener("playing", () => {
+      if (closed) { video.pause(); return; }
+      started = true;
+      starting = false;
+      clearTimeout(loadTimer);
+      clearTimeout(stallTimer);
+      poster.style.display = "none";
+      start.style.display = "none";
+    });
+    function play() {
+      if (closed || starting || started) return;
+      starting = true;
       start.disabled = true;
-      video.currentTime = 0;
+      video.defaultMuted = false;
+      video.removeAttribute("muted");
       video.muted = false;
       video.volume = 1;
-      video.play().then(() => {
-        start.hidden = true;
-        poster.classList.add("leaving");
-        setTimeout(() => poster.remove(), 190);
-      }).catch(() => {
-        start.disabled = false;
-      });
+      if (!maxTimer) maxTimer = setTimeout(close, 8000);
+      clearTimeout(loadTimer);
+      loadTimer = setTimeout(close, 4500);
+      try {
+        // Native MP4 audio is started directly in the existing pointer/touch event.
+        const played = video.play();
+        SFX.unlock();
+        Promise.resolve(played).then(() => {
+          if (closed) video.pause();
+        }, error => {
+          if (closed) return;
+          starting = false;
+          if (error.name === "NotAllowedError") start.disabled = false;
+          else close();
+        });
+      } catch (e) { close(); }
+    }
+    // Android WebViews can deliver pointer/touch activation before the click.
+    ["pointerup", "touchend", "click"].forEach(name => start.addEventListener(name, play));
+    video.addEventListener("waiting", () => {
+      if (!started || closed) return;
+      clearTimeout(stallTimer);
+      stallTimer = setTimeout(close, 2500);
     });
+    function onVisibility() { if (document.hidden && (starting || started)) close(); }
+    document.addEventListener("visibilitychange", onVisibility);
     video.addEventListener("ended", close, { once: true });
     video.addEventListener("error", close, { once: true });
+    video.querySelector("source")?.addEventListener("error", close, { once: true });
+    if (video.error) close();
+    return finished;
   })();
 
   if (inTelegram) {
@@ -1974,9 +2246,9 @@
   } else {
     $("send").classList.remove("hidden");
   }
-  const roll = location.hash.match(/^#roll=(\w+)/);
-  showTab(roll || location.hash === "#case" ? "case" : location.hash === "#tourney" ? "tourney" : "progress");
-  if (roll) replay(roll[1]);
+  const initialRoll = location.hash.match(/^#roll=(\w+)/);
+  showTab(initialRoll || location.hash === "#case" ? "case" : location.hash === "#tourney" ? "tourney" : "progress");
+  if (initialRoll) SPLASH.then(() => replay(initialRoll[1]));
   LIVE.start();
 </script>
 </body>
