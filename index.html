@@ -397,10 +397,9 @@
 <body>
 <div id="splash">
   <img id="splash-poster" src="splash-ak47-poster.jpg?v=2" alt="" aria-hidden="true">
-  <video id="splash-video" playsinline webkit-playsinline muted preload="auto" aria-hidden="true">
-    <source src="splash-ak47.mp4?v=mobile-audio-1" type="video/mp4">
+  <video id="splash-video" playsinline preload="auto" aria-hidden="true">
+    <source src="splash-ak47.mp4?v=friend-voice-1" type="video/mp4">
   </video>
-  <audio id="splash-audio" preload="auto" src="splash-audio.mp3?v=mobile-audio-1" hidden></audio>
   <button type="button" id="splash-start" aria-label="Запустить ролик со звуком"><span class="splash-play" aria-hidden="true"></span></button>
 </div>
 <canvas id="fx"></canvas>
@@ -652,7 +651,7 @@
   <div class="note" id="note"></div>
 </main>
 
-<script src="case-audio.js?v=mobile-audio-1"></script>
+<script src="case-audio.js?v=rarity-5"></script>
 <script>
   const tg = window.Telegram && window.Telegram.WebApp;
   // Not initData: a page opened from a reply-keyboard button (the only kind that can sendData) gets none.
@@ -1082,7 +1081,7 @@
     const btn = $("snd");
     const paint = () => { btn.textContent = on ? "🔊" : "🔇"; btn.setAttribute("aria-pressed", String(on)); btn.title = on ? "Звук включён" : "Звук выключен"; };
     function ensure() {
-      if (ctx && ctx.state !== "closed") return ctx;
+      if (ctx) return ctx;
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return null;
       try { ctx = new AC(); gain = ctx.createGain(); gain.gain.value = on ? .9 : 0; gain.connect(ctx.destination); } catch (e) { ctx = null; gain = null; }
@@ -1090,24 +1089,10 @@
     }
     function unlock() {
       if (!on) return Promise.resolve(false);
-      try {
-        const session = window.navigator?.audioSession;
-        if (session && session.type !== "playback") session.type = "playback";
-      } catch (e) { /* older WebViews use the media element's audio session */ }
       const c = ensure();
       if (!c) return Promise.resolve(false);
-      let resumed;
-      try {
-        // Start a silent sample in the gesture itself, including older iOS WebViews.
-        if (c.state !== "running") {
-          resumed = c.resume();
-          const silent = c.createBufferSource();
-          silent.buffer = c.createBuffer(1, 1, c.sampleRate);
-          silent.connect(gain);
-          silent.start(0);
-        }
-      } catch (e) { return Promise.resolve(false); }
-      return Promise.resolve(resumed).then(() => {
+      const resumed = c.state === "running" ? Promise.resolve() : c.resume();
+      return resumed.then(() => {
         const output = rig();
         if (!output) return false;
         try { window.YooCaseAudio?.prime?.(output); } catch (e) { /* the reel remains usable without audio */ }
@@ -1123,12 +1108,7 @@
     }
     paint();
     btn.addEventListener("click", toggle);
-    ["pointerdown", "pointerup", "touchend", "click", "keydown"].forEach(event => {
-      document.addEventListener(event, unlock, { passive: true });
-    });
-    document.addEventListener("visibilitychange", () => {
-      if (!document.hidden && ctx && on) unlock();
-    });
+    document.addEventListener("pointerdown", unlock, { once: true, passive: true });
     const rig = () => (on && ctx?.state === "running" ? { ctx, out: gain } : null);
     function reel(cue, options) {
       const output = rig();
@@ -2140,73 +2120,16 @@
   $("game-link").href = "game.html" + location.search;
 
   const SPLASH = (() => {
-    const splash = $("splash"), poster = $("splash-poster"), video = $("splash-video"), start = $("splash-start"), audio = $("splash-audio");
+    const splash = $("splash"), poster = $("splash-poster"), video = $("splash-video"), start = $("splash-start");
     let closed = false;
-    let started = false, inFlight = false, embedded = false, attempt = 0, watchdog;
     let resolve;
     const finished = new Promise(done => { resolve = done; });
     video.pause();
-    video.muted = true;
-    function pause() { video.pause(); audio.pause(); }
-    function syncAudio() {
-      if (embedded || Math.abs(audio.currentTime - video.currentTime) <= .12) return;
-      try { audio.currentTime = video.currentTime; } catch (e) { /* retry alignment when the media becomes seekable */ }
-    }
-    function retry() {
-      if (closed) return;
-      ++attempt;
-      clearTimeout(watchdog);
-      pause();
-      started = false;
-      inFlight = false;
-      try { video.currentTime = 0; audio.currentTime = 0; } catch (e) { /* media may still be loading */ }
-      poster.style.display = "";
-      start.style.display = "";
-      start.disabled = false;
-    }
-    function play() {
-      if (closed || inFlight) return;
-      inFlight = true;
-      start.disabled = true;
-      const token = ++attempt;
-      SFX.unlock();
-      video.muted = !embedded;
-      video.volume = 1;
-      audio.muted = false;
-      audio.volume = 1;
-      // Both play calls run synchronously in the existing splash click.
-      try {
-        const videoPlay = video.play();
-        const audioPlay = embedded ? undefined : audio.play();
-        watchdog = setTimeout(retry, 12000);
-        Promise.all([videoPlay, audioPlay]).then(() => {
-          if (closed || token !== attempt) return;
-          clearTimeout(watchdog);
-          inFlight = false;
-          started = true;
-          poster.style.display = "none";
-          start.style.display = "none";
-          syncAudio();
-        }, () => { if (token === attempt) retry(); });
-      } catch (e) { retry(); }
-    }
-    function visibility() {
-      if (closed) return;
-      if (document.hidden) {
-        if (started) pause();
-        else if (inFlight) retry();
-      } else if (started) play();
-    }
-    document.addEventListener("visibilitychange", visibility);
     function close() {
       if (closed) return;
       closed = true;
-      ++attempt;
-      clearTimeout(watchdog);
-      document.removeEventListener("visibilitychange", visibility);
 
       if (reduceRoll) {
-        pause();
         splash.remove();
         resolve();
         return;
@@ -2228,11 +2151,7 @@
         } catch (e) { /* The video itself remains visible if a frame cannot be copied. */ }
       }
 
-      pause();
-      let faded = false;
       const finish = () => {
-        if (faded) return;
-        faded = true;
         clearTimeout(fallback);
         splash.removeEventListener("transitionend", onFade);
         splash.remove();
@@ -2245,22 +2164,20 @@
       splash.addEventListener("transitionend", onFade);
       splash.classList.add("leaving");
     }
-    video.addEventListener("waiting", () => {
-      if (started && !embedded) audio.pause();
-    });
     video.addEventListener("playing", () => {
-      if (!started || embedded || closed || document.hidden) return;
-      syncAudio();
-      if (audio.paused) {
-        try { Promise.resolve(audio.play()).catch(retry); } catch (e) { retry(); }
-      }
+      poster.remove();
+      start.remove();
+    }, { once: true });
+    start.addEventListener("click", () => {
+      start.disabled = true;
+      video.muted = false;
+      video.volume = 1;
+      SFX.unlock();
+      video.play().catch(error => {
+        if (error.name === "NotAllowedError") start.disabled = false;
+        else close();
+      });
     });
-    audio.addEventListener("error", () => {
-      if (closed || embedded) return;
-      embedded = true;
-      retry();
-    });
-    start.addEventListener("click", play);
     video.addEventListener("ended", close, { once: true });
     video.addEventListener("error", close, { once: true });
     video.querySelector("source")?.addEventListener("error", close, { once: true });
