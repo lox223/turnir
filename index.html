@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru">
+<html lang="ru" class="splash-active">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
@@ -16,6 +16,9 @@
     --error: #ff5c5c;
   }
   * { box-sizing: border-box; }
+  html.splash-active, html.splash-active body { height: 100%; overflow: hidden; overscroll-behavior: none; scrollbar-width: none; }
+  html.splash-active::-webkit-scrollbar, html.splash-active body::-webkit-scrollbar { display: none; }
+  html.splash-active #splash { touch-action: none; }
   body { margin: 0; background: var(--bg); color: var(--text);
          font: 16px/1.4 -apple-system, "Segoe UI", Roboto, sans-serif; }
   main { max-width: 480px; margin: 0 auto; padding: 16px 16px 96px; }
@@ -396,9 +399,9 @@
 </head>
 <body>
 <div id="splash">
-  <img id="splash-poster" src="splash-hq-v3.jpg?v=hq-audio-3" alt="" aria-hidden="true">
+  <img id="splash-poster" src="splash-v4.jpg?v=scroll-sound-4" alt="" aria-hidden="true">
   <video id="splash-video" playsinline webkit-playsinline preload="metadata" aria-hidden="true">
-    <source src="splash-hq-v3.mp4?v=hq-audio-3" type="video/mp4">
+    <source src="splash-v4.mp4?v=scroll-sound-4" type="video/mp4">
   </video>
   <button type="button" id="splash-start" aria-label="Запустить ролик со звуком"><span class="splash-play" aria-hidden="true"></span></button>
 </div>
@@ -651,7 +654,7 @@
   <div class="note" id="note"></div>
 </main>
 
-<script src="case-audio.js?v=hq-audio-3"></script>
+<script src="case-audio.js?v=scroll-sound-4"></script>
 <script>
   const tg = window.Telegram && window.Telegram.WebApp;
   // Not initData: a page opened from a reply-keyboard button (the only kind that can sendData) gets none.
@@ -2147,6 +2150,7 @@
       clearTimeout(fallback);
       splash.removeEventListener("transitionend", onFade);
       splash.remove();
+      document.documentElement.classList.remove("splash-active");
       video.removeAttribute("src");
       video.querySelector("source")?.removeAttribute("src");
       try { video.load(); } catch (e) { /* release a stalled decoder after the splash is gone */ }
