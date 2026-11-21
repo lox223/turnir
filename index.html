@@ -1279,14 +1279,26 @@
       if (!live) { setOffline(inTelegram ? "Открой приложение кнопкой в боте — так Telegram подтвердит твой аккаунт." : "Открой этот раздел из бота в Telegram, чтобы увидеть личный прогресс."); return; }
       busy = true;
       try {
-        const response = await fetch(API.replace(/\/$/, "") + "/api/progress", {
-          method: "POST", headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" },
-          body: JSON.stringify({ initData: tg.initData, action, code }),
-        });
-        const data = await response.json();
-        if (data.error) setOffline(data.error);
-        else render(data);
-      } catch (e) {
+        const attempts = action === "state" ? 3 : 2;
+        for (let attempt = 0; attempt < attempts; attempt++) {
+          const ctl = new AbortController();
+          const timer = setTimeout(() => ctl.abort(), 7000);
+          try {
+            const response = await fetch(API.replace(/\/$/, "") + "/api/progress", {
+              method: "POST", headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" },
+              body: JSON.stringify({ initData: tg.initData, action, code }), cache: "no-store", signal: ctl.signal,
+            });
+            const data = await response.json();
+            if (data.error) { setOffline(data.error); return; }
+            if (!response.ok) throw new Error("progress response " + response.status);
+            render(data);
+            return;
+          } catch (e) {
+            if (attempt + 1 < attempts) await new Promise((resolve) => setTimeout(resolve, 450 * (attempt + 1)));
+          } finally {
+            clearTimeout(timer);
+          }
+        }
         setOffline("Не получилось загрузить прогресс. Проверь соединение и попробуй ещё раз.");
       } finally { busy = false; }
     }
