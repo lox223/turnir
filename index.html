@@ -343,6 +343,14 @@
   .lv-card .av { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 16px; color: #fff; }
   .lv-card .nm { font-weight: 700; font-size: 13px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
   .lv-card .tk { font-size: 11px; color: #8b9aab; }
+  .lv-win.spinning { box-shadow: inset 0 0 0 1px rgba(255,212,90,.45), inset 0 10px 22px rgba(0,0,0,.4), 0 0 26px rgba(245,166,35,.2); animation: lvSpinGlow 1.15s ease-in-out infinite; }
+  .lv-win.spinning .lv-marker { animation: lvMarkerPulse .42s linear infinite; }
+  @keyframes lvSpinGlow { 50% { box-shadow: inset 0 0 0 1px rgba(255,224,138,.9), inset 0 10px 22px rgba(0,0,0,.4), 0 0 40px rgba(245,166,35,.45); } }
+  @keyframes lvMarkerPulse { 50% { opacity: .45; transform: scaleX(1.8); } }
+  .lv-win.done { animation: lvWinner .6s cubic-bezier(.2,1.35,.3,1) both; }
+  @keyframes lvWinner { 0% { transform: scale(.96); } 55% { transform: scale(1.025); } 100% { transform: none; } }
+  .lv-win.done .lv-card.win { animation: lvCardWin 1.4s ease-in-out infinite; }
+  @keyframes lvCardWin { 50% { box-shadow: 0 0 0 2px #fff1aa inset, 0 0 32px rgba(255,200,70,.95); } }
   .lv-win.done .lv-card:not(.win) { opacity: .28; }
   .lv-card.win { z-index: 2; box-shadow: 0 0 0 2px #ffd45a inset, 0 0 22px rgba(255,200,70,.7); }
   .lv-marker { position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; margin-left: -1px; z-index: 4; pointer-events: none;
@@ -1755,7 +1763,7 @@
   const LIVE = (() => {
     const CARD_W = 104, BODY_W = 96;
     let offset = 0, samples = [], st = null, reels = [], timer = 0, tick = 0, revealAt = 0, revealFor = 0;
-    let dismissed = 0, finished = false, built = "";
+    let dismissed = 0, finished = false, built = "", soundFor = "", rollSounded = false, resultSounded = false;
     const serverNow = () => Date.now() + offset;
     const fmt = (ms) => { const x = Math.max(0, Math.ceil(ms / 1000)); return String(Math.floor(x / 60)).padStart(2, "0") + ":" + String(x % 60).padStart(2, "0"); };
     const h32 = (a, b) => { let h = (a ^ Math.imul(b, 0x9e3779b1)) >>> 0; h = Math.imul(h ^ (h >>> 16), 0x85ebca6b); h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
@@ -1763,6 +1771,7 @@
     const initials = (n) => n.replace(/[^\p{L}\p{N}]/gu, "").slice(0, 2).toUpperCase() || "?";
     const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
     const sha = async (text) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)))].map((x) => x.toString(16).padStart(2, "0")).join("");
+    const prizeAt = (place) => Array.isArray(st?.prizes) && st.prizes[place] ? st.prizes[place] : st?.prize || "Приз";
 
     // ----- reels (same maths for everyone: the strip comes from the seed, the position from the server time)
     function pickIdx(S, r) { const x = r * S.total; let lo = 0, hi = S.cum.length - 1; while (lo < hi) { const m = (lo + hi) >> 1; if (S.cum[m] > x) hi = m; else lo = m + 1; } return lo; }
@@ -1792,7 +1801,7 @@
       const box = $("lv-reels"); box.innerHTML = "";
       reels.forEach((S, r) => {
         const el = document.createElement("div");
-        el.innerHTML = '<div class="lv-cap">🏆 Место ' + (r + 1) + '</div><div class="lv-win"><div class="lv-cards"></div><div class="lv-marker"></div></div>';
+        el.innerHTML = '<div class="lv-cap">🏆 Место ' + (r + 1) + ' · 🎁 ' + esc(prizeAt(r)) + '</div><div class="lv-win"><div class="lv-cards"></div><div class="lv-marker"></div></div>';
         box.appendChild(el); S.win = el.querySelector(".lv-win"); S.cards = el.querySelector(".lv-cards");
       });
       initPools(); built = String(st.start);
@@ -1825,10 +1834,28 @@
     // ----- screen
     function setStatus(label, value) { $("lv-status").innerHTML = "<small>" + label + "</small>" + value; }
     function hide() { $("live").classList.add("hidden"); $("live-pill").classList.add("hidden"); }
+    function resetSound(start) {
+      const key = String(start);
+      if (soundFor === key) return;
+      soundFor = key; rollSounded = false; resultSounded = false;
+      SFX.load();
+    }
+    function cueRoll(t) {
+      if (rollSounded || t > 3000) return;
+      rollSounded = true;
+      SFX.play("roll", 0.3);
+      try { tg.HapticFeedback.impactOccurred("medium"); } catch (e) { /* not in Telegram */ }
+    }
+    function cueResult() {
+      if (resultSounded) return;
+      resultSounded = true;
+      SFX.play("top");
+    }
     async function showResult() {
       const R = st.reveal; if (!R) return;
       finished = true;
-      $("lv-res").innerHTML = R.winners.map((w, r) => '<div class="row">🏆 <b>' + (r + 1) + ' место</b> — ' + esc(R.players[w][0]) + ' · билетов ' + R.players[w][1] + '<br>🎁 ' + esc(st.prize) + '</div>').join("") + '<div id="lv-proof"></div>';
+      cueResult();
+      $("lv-res").innerHTML = R.winners.map((w, r) => '<div class="row">🏆 <b>' + (r + 1) + ' место</b> — ' + esc(R.players[w][0]) + ' · билетов ' + R.players[w][1] + '<br>🎁 ' + esc(prizeAt(r)) + '</div>').join("") + '<div id="lv-proof"></div>';
       $("lv-res").classList.remove("hidden");
       try { tg.HapticFeedback.notificationOccurred("success"); } catch (e) { /* not in Telegram */ }
       if (st.proof) {
@@ -1846,19 +1873,24 @@
       if (now >= st.end) { st = null; reels = []; finished = false; built = ""; hide(); return; }
       const open = dismissed !== st.start;
       $("live").classList.toggle("hidden", !open); $("live-pill").classList.toggle("hidden", open);
-      $("lv-prize").textContent = "🎁 " + st.prize;
+      $("lv-prize").textContent = Array.isArray(st.prizes) && st.prizes.length > 1 ? "🎁 " + st.prizes.length + " призов" : "🎁 " + st.prize;
       if (open) {
         if (st.reveal && built !== String(st.start)) buildReels();
         if (t < 0) {
-          setStatus("прокрутка начнётся через", fmt(-t)); $("lv-bar").style.width = "0"; $("lv-now").textContent = st.reveal ? "" : "Участники и линейки откроются прямо перед стартом";
-          reels.forEach((S) => paint(S, P0(), false));
+          setStatus("прокрутка начнётся через", fmt(-t)); $("lv-bar").style.width = "0"; $("lv-now").textContent = st.reveal ? "Скоро покажем линейки всех участников" : "Участники и линейки откроются прямо перед стартом";
+          reels.forEach((S) => { S.win.classList.remove("spinning", "done"); paint(S, P0(), false); });
         } else if (t < st.spin) {
-          if (!reels.length) setStatus("подключаемся к эфиру", "…");
-          else { setStatus("до остановки", fmt(st.spin - t)); $("lv-bar").style.width = (t / st.spin * 100) + "%"; reels.forEach((S) => paint(S, posAt(S, t), false)); }
-          $("lv-now").textContent = "";
+          cueRoll(t);
+          if (!reels.length) {
+            setStatus("подключаемся к эфиру", "…"); $("lv-now").textContent = "Загружаем линейки участников";
+          } else {
+            setStatus("до остановки", fmt(st.spin - t)); $("lv-bar").style.width = (t / st.spin * 100) + "%";
+            reels.forEach((S) => { S.win.classList.remove("done"); S.win.classList.add("spinning"); paint(S, posAt(S, t), false); });
+            $("lv-now").textContent = "Прокрутка синхронна у всех зрителей";
+          }
         } else if (reels.length) {
-          setStatus("победители", "🏆"); $("lv-bar").style.width = "100%"; $("lv-now").textContent = "";
-          reels.forEach((S) => { paint(S, P1(S), true); S.win.classList.add("done"); });
+          setStatus("победители", "🏆"); $("lv-bar").style.width = "100%"; $("lv-now").textContent = "Итоги показаны одновременно всем зрителям";
+          reels.forEach((S) => { S.win.classList.remove("spinning"); S.win.classList.add("done"); paint(S, P1(S), true); });
           if (!finished) showResult();
         }
       }
@@ -1868,8 +1900,8 @@
 
     // ----- talking to the bot
     function apply(d) {
-      if (d.phase === "idle") { st = null; reels = []; finished = false; built = ""; hide(); return; }
-      if (!st || st.start !== d.start) { st = d; reels = []; finished = false; built = ""; revealAt = 0; }
+      if (d.phase === "idle") { st = null; reels = []; finished = false; built = ""; soundFor = ""; hide(); return; }
+      if (!st || st.start !== d.start) { st = d; reels = []; finished = false; built = ""; revealAt = 0; resetSound(d.start); }
       else st = { ...st, ...d, reveal: d.reveal || st.reveal, proof: d.proof || st.proof };
       kick();
     }
@@ -1901,6 +1933,7 @@
       timer = setTimeout(async () => { await load(); schedule(); }, ms + Math.random() * 800);
     }
     function start() {
+      SFX.load();
       load().then(schedule);
       $("lv-close").addEventListener("click", () => { if (st) { dismissed = st.start; kick(); } });
       $("live-pill").addEventListener("click", () => { dismissed = 0; kick(); });
