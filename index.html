@@ -797,12 +797,12 @@
   const card = (it, chance = true) => `
     <div class="item${it.top ? " top" : ""}" style="--rarity:${it.rarity}">
       ${chance ? `<span class="item-chance">${it.chance}%</span>` : ""}
-      ${it.img ? `<img src="${it.img}?v=2" alt="" width="156" height="114" decoding="async" draggable="false">` : TICKET}
+      ${it.img ? `<img src="${it.img}?v=3" alt="" width="156" height="114" decoding="async" draggable="false">` : TICKET}
       <div class="item-wear">${it.wear}</div>
       <div class="item-price">${it.price}</div>
     </div>`;
   $("items").innerHTML = ITEMS.map((it) => card(it)).join("");
-  ITEMS.forEach((it) => { if (it.img) new Image().src = it.img + "?v=2"; });
+  ITEMS.forEach((it) => { if (it.img) new Image().src = it.img + "?v=3"; });
 
   // Optional win sharing. No photo, referral id or caption leaves the page until the player chooses to send it.
   const WIN_SHARE = (() => {
@@ -882,7 +882,7 @@
     }
     async function renderCard(result) {
       const win = result.win;
-      const picture = await loadImage(win.img ? `${win.img}?v=2` : "data:image/svg+xml;charset=utf-8," + encodeURIComponent(TICKET));
+      const picture = await loadImage(win.img ? `${win.img}?v=3` : "data:image/svg+xml;charset=utf-8," + encodeURIComponent(TICKET));
       const cv = document.createElement("canvas"); cv.width = cv.height = 1080;
       const ctx = cv.getContext("2d");
       if (!ctx) throw new Error("canvas unavailable");
@@ -918,6 +918,8 @@
       ctx.translate(540, 470); ctx.rotate(-.10);
       const scale = Math.min(990 / picture.naturalWidth, 630 / picture.naturalHeight);
       const w = picture.naturalWidth * scale, h = picture.naturalHeight * scale;
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
       ctx.shadowColor = "#000a"; ctx.shadowBlur = 28; ctx.shadowOffsetY = 20;
       ctx.drawImage(picture, -w / 2, -h / 2, w, h);
       ctx.restore();
@@ -2211,7 +2213,7 @@
         el.className = "fd" + (seen && !seen.has(d.id) ? " new" : "");
         el.style.setProperty("--rarity", it.rarity);
         el.innerHTML = it.img
-          ? `<img src="${it.img}?v=2" alt="" width="156" height="114" decoding="async" draggable="false">`
+          ? `<img src="${it.img}?v=3" alt="" width="156" height="114" decoding="async" draggable="false">`
           : TICKET;
         const who = document.createElement("div");
         who.className = "fd-name";
