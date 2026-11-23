@@ -70,15 +70,21 @@
   .review-tile { display: block; break-inside: avoid; overflow: hidden; margin-bottom: 10px; border-radius: 14px; background: var(--card); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06), 0 6px 15px rgba(0, 0, 0, .16); }
   .review-tile img { display: block; width: 100%; height: auto; background: #252b35; }
   .reviews-empty { padding: 24px 14px; border-radius: 14px; background: var(--card); color: var(--hint); text-align: center; font-size: 14px; }
-  .progress-hero { position: relative; overflow: hidden; padding: 16px; margin-bottom: 12px; border-radius: 16px;
-                   background: radial-gradient(110% 120% at 92% -12%, rgba(255, 209, 83, .42), transparent 58%),
-                               linear-gradient(135deg, #2b2848, #192d43); box-shadow: inset 0 0 0 1px rgba(255, 220, 133, .22); }
-  .progress-hero::after { content: ""; position: absolute; width: 150px; height: 150px; right: -48px; bottom: -68px; border-radius: 50%;
-                          background: radial-gradient(circle, rgba(255, 211, 82, .36), transparent 67%); pointer-events: none; }
-  .p-label { position: relative; color: #d6d1ee; font-size: 12px; text-transform: uppercase; letter-spacing: .07em; }
+  .progress-hero { position: relative; isolation: isolate; overflow: hidden; padding: 16px; margin-bottom: 12px; border-radius: 16px;
+                   background: radial-gradient(110% 120% at 92% -12%, rgba(255, 209, 83, .58), transparent 58%),
+                               radial-gradient(82% 104% at -8% 110%, rgba(120, 74, 255, .40), transparent 62%),
+                               linear-gradient(135deg, #302554, #17354d); box-shadow: inset 0 0 0 1px rgba(255, 220, 133, .33), 0 9px 22px rgba(5, 13, 34, .22); }
+  .progress-hero::after { content: ""; position: absolute; z-index: -1; width: 170px; height: 170px; right: -52px; bottom: -76px; border-radius: 50%;
+                          background: radial-gradient(circle, rgba(255, 211, 82, .48), transparent 67%); pointer-events: none; }
+  .progress-hero.music::before { content: ""; position: absolute; z-index: -1; width: 142%; height: 48%; top: 27%; left: -21%; pointer-events: none;
+                                  background: linear-gradient(108deg, transparent 28%, rgba(255, 244, 181, .18) 48%, transparent 66%); transform: skewX(-18deg); animation: musicGlow 5.2s ease-in-out infinite; }
+  @keyframes musicGlow { 0%, 36% { transform: translateX(-36%) skewX(-18deg); opacity: 0; } 55% { opacity: 1; } 100% { transform: translateX(58%) skewX(-18deg); opacity: 0; } }
+  .p-label { position: relative; color: #e0d8ff; font-size: 12px; text-transform: uppercase; letter-spacing: .07em; }
   .p-tickets { position: relative; margin-top: 3px; font-size: 36px; font-weight: 800; letter-spacing: -.04em; }
   .p-tickets span { font-size: 15px; font-weight: 600; letter-spacing: 0; color: #fff0b3; }
-  .p-chance { position: relative; margin-top: 5px; color: #f4f2ff; font-size: 14px; }
+  .p-chance { position: relative; margin-top: 5px; color: #f8f5ff; font-size: 14px; }
+  .p-visual { position: relative; overflow: hidden; margin: 14px 0 2px; border: 1px solid rgba(255, 227, 141, .46); border-radius: 13px; background: #1c2131; box-shadow: 0 10px 22px rgba(0, 0, 0, .20); }
+  .p-visual img { display: block; width: 100%; aspect-ratio: 12 / 7; object-fit: cover; background: #1c2131; }
   .p-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 12px 0; }
   .p-stat { padding: 12px; border-radius: 13px; background: var(--card); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .045); }
   .p-stat b { display: block; margin-top: 2px; font-size: 18px; color: var(--accent); }
@@ -183,7 +189,7 @@
          background: var(--card); color: var(--text); font-size: 18px; line-height: 1; cursor: pointer; }
   .snd:active { transform: scale(.94); }
   @media (prefers-reduced-motion: reduce) {
-    .item.top::after, .roll .item.win, .roll.spinning .roll-marker { animation: none; }
+    .item.top::after, .roll .item.win, .roll.spinning .roll-marker, .progress-hero.music::before { animation: none; }
   }
   .result { text-align: center; background: var(--card); border-radius: 14px; padding: 14px; margin-bottom: 12px;
             font-size: 15px; }
@@ -383,7 +389,7 @@
 <div id="splash">
   <img id="splash-poster" src="splash-ak47-poster.jpg?v=5" alt="" aria-hidden="true">
   <video id="splash-video" playsinline preload="auto" aria-hidden="true">
-    <source src="splash-ak47.mp4?v=5" type="video/mp4">
+    <source src="splash-ak47-mono.mp4?v=1" type="video/mp4">
   </video>
   <button type="button" id="splash-start" aria-label="Запустить ролик со звуком"><span class="splash-play" aria-hidden="true"></span></button>
 </div>
@@ -490,10 +496,11 @@
     <div id="progress-loading" class="p-empty">Загружаем твой прогресс…</div>
     <div id="progress-offline" class="p-empty hidden"></div>
     <div id="progress-content" class="hidden">
-      <div class="progress-hero">
+      <div class="progress-hero" id="p-hero">
         <div class="p-label" id="p-prize">Текущий розыгрыш</div>
         <div class="p-tickets"><span id="p-tickets">0</span> <span>билетов</span></div>
         <div class="p-chance" id="p-chance"></div>
+        <div class="p-visual hidden" id="p-visual"><img id="p-visual-img" alt="Призы музыкального розыгрыша" decoding="async"></div>
       </div>
       <div class="p-grid">
         <div class="p-stat"><span>👥 Друзья</span><b id="p-friends">0</b></div>
@@ -921,7 +928,14 @@
       if (ctx) return ctx;
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return null;
-      try { ctx = new AC(); gain = ctx.createGain(); gain.gain.value = 0.9; gain.connect(ctx.destination); } catch (e) { ctx = null; }
+      try {
+        ctx = new AC();
+        gain = ctx.createGain();
+        gain.channelCount = 1;
+        gain.channelCountMode = "explicit";
+        gain.gain.value = 1.15;
+        gain.connect(ctx.destination);
+      } catch (e) { ctx = null; }
       return ctx;
     }
     function load() {   // fetch + decode once; a missing file only silences that one sound
@@ -943,9 +957,23 @@
       load();
       return ready.then(() => { unlocked = c.state === "running"; return unlocked; });
     }
+    function mixToCenter(source) {
+      const split = ctx.createChannelSplitter(2);
+      const merge = ctx.createChannelMerger(1);
+      const left = ctx.createGain();
+      const right = ctx.createGain();
+      left.gain.value = 0.5;
+      right.gain.value = 0.5;
+      source.connect(split);
+      split.connect(left, 0);
+      split.connect(right, 1);
+      left.connect(merge, 0, 0);
+      right.connect(merge, 0, 0);
+      return merge;
+    }
     function play(name, offset = 0) {
       if (!on || !unlocked || !ctx || ctx.state !== "running" || !bufs[name]) return false;
-      try { const s = ctx.createBufferSource(); s.buffer = bufs[name]; s.connect(gain); s.start(0, offset); return true; } catch (e) { return false; }
+      try { const s = ctx.createBufferSource(); s.buffer = bufs[name]; mixToCenter(s).connect(gain); s.start(0, offset); return true; } catch (e) { return false; }
     }
     function toggle() {
       on = !on;
@@ -1031,6 +1059,12 @@
   // Signed personal progress: the bot keeps all balances and only the page renders them.
   const PROGRESS = (() => {
     const loading = $("progress-loading"), offline = $("progress-offline"), content = $("progress-content");
+    const visualNames = new Set(["music-giveaway.png"]);
+    const visual = $("p-visual"), visualImage = $("p-visual-img"), hero = $("p-hero");
+    const hideVisual = () => {
+      visualImage.removeAttribute("src"); visual.classList.add("hidden"); hero.classList.remove("music");
+    };
+    visualImage.addEventListener("error", hideVisual);
     let busy = false, loaded = false;
     const clear = (id) => { while ($(id).firstChild) $(id).removeChild($(id).firstChild); };
     function setOffline(text) {
@@ -1054,6 +1088,10 @@
       }
       content.classList.remove("hidden"); loaded = true;
       $("p-prize").textContent = "🎁 " + data.giveaway.prize;
+      if (visualNames.has(data.giveaway.visual)) {
+        visualImage.src = data.giveaway.visual;
+        visual.classList.remove("hidden"); hero.classList.add("music");
+      } else hideVisual();
       $("p-tickets").textContent = data.giveaway.tickets;
       $("p-chance").textContent = data.giveaway.chance ? "Твой " + data.giveaway.chance.replace(/<[^>]*>/g, "") : "Участвуй в розыгрыше, чтобы копить билеты.";
       $("p-friends").textContent = data.giveaway.friends + " × 3";
@@ -2030,6 +2068,7 @@
     else video.addEventListener("loadedmetadata", cuePosterFrame, { once: true });
     start.addEventListener("click", () => {
       start.disabled = true;
+      SFX.unlock();
       video.currentTime = 0;
       video.muted = false;
       video.volume = 1;
