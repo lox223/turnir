@@ -1064,10 +1064,10 @@
         for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
       }
       const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
-      s.buffer = noiseBuf; f.type = "bandpass"; f.Q.value = .8;
-      f.frequency.setValueAtTime(950, t); f.frequency.exponentialRampToValueAtTime(3600, t + .2);
-      g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.055, t + .035);
-      g.gain.exponentialRampToValueAtTime(.0001, t + .23);
+      s.buffer = noiseBuf; f.type = "lowpass"; f.Q.value = .5;
+      f.frequency.setValueAtTime(850, t); f.frequency.exponentialRampToValueAtTime(420, t + .16);
+      g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.025, t + .018);
+      g.gain.exponentialRampToValueAtTime(.0001, t + .17);
       s.connect(f); f.connect(g); g.connect(r.out); caseVoices.add(s);
       s.onended = () => { caseVoices.delete(s); s.disconnect(); f.disconnect(); g.disconnect(); };
       s.start(t); s.stop(t + .24);
@@ -1105,16 +1105,22 @@
       for (const s of caseVoices) { try { s.stop(); } catch (e) { /* already stopped */ } }
       caseVoices.clear(); coinUntil = []; lastCoin = -1;
     }
+    // Soft, short sine tones replace the bright one-shots only for the everyday case.
     function caseOpen() {
-      play("open"); caseHiss();
-      caseTone(780, .055, .075, 0, 380, "triangle");
-      caseTone(1220, .028, .05, .055, 880, "triangle");
+      caseHiss();
+      caseTone(260, .035, .10, 0, 160);
+      caseTone(110, .022, .14, .018, 85);
     }
     function caseWin(code, hasSkin) {
       stopCaseRoll();
       if (document.hidden || $("tab-case").classList.contains("hidden")) return;
-      play(code === "ak" ? "top" : hasSkin ? "win" : "tickets");
-      [1046.5, 1318.5, 1568].forEach((f, i) => caseTone(f, .024, .25, i * .045));
+      if (!hasSkin) {
+        caseTone(260, .025, .14);
+        caseTone(340, .018, .17, .055);
+        return;
+      }
+      const notes = code === "ak" ? [261.63, 329.63, 392, 523.25] : [261.63, 329.63, 392];
+      notes.forEach((f, i) => caseTone(f, .024, code === "ak" ? .28 : .22, i * .04));
     }
     function coinHit(force, bounce = 0) {
       const r = rig(); if (!r || document.hidden) return;
