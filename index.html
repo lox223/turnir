@@ -814,7 +814,7 @@
                    life: 0, max: rnd(.48, .98), size: rnd(1.4, 3.5), color: colors[(Math.random() * colors.length) | 0] });
     }
     function coin(delay) {
-      const size = rnd(10, 16);
+      const size = rnd(5, 8);
       parts.push({ k: "coin", x: rnd(size * 2, Math.max(size * 2, W - size * 2)), y: -size * 3,
         vx: rnd(-38, 38), vy: rnd(110, 210), size, angle: rnd(-.5, .5), spin: rnd(0, 6.2832),
         speed: rnd(7, 12), tilt: rnd(-2, 2), delay, life: 0, max: 5.5, bounces: 0, settled: false, fade: 0 });
@@ -824,30 +824,30 @@
       const height = Math.max(0, floor - p.size - p.y);
       ctx.globalAlpha = alpha * .24 * Math.max(0, 1 - height / 180);
       ctx.fillStyle = "#000000";
-      ctx.beginPath(); ctx.ellipse(p.x, floor + 2, p.size * (1.1 + height / 180), 3, 0, 0, 6.2832); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(p.x, floor + 1, p.size * (1.1 + height / 180), 1.5, 0, 0, 6.2832); ctx.fill();
       ctx.save();
       ctx.translate(p.x, p.y); ctx.rotate(p.angle);
       const width = Math.max(.12, Math.abs(Math.cos(p.spin)));
       ctx.scale(width, 1);
       ctx.globalAlpha = alpha;
       ctx.fillStyle = "#885018";
-      ctx.beginPath(); ctx.ellipse(2.5 / width, 1.5, p.size, p.size, 0, 0, 6.2832); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(1.25 / width, .75, p.size, p.size, 0, 0, 6.2832); ctx.fill();
       const gold = ctx.createLinearGradient(-p.size, -p.size, p.size, p.size);
       gold.addColorStop(0, "#fff1b0"); gold.addColorStop(.34, "#f4cb60");
       gold.addColorStop(.6, "#e7ad36"); gold.addColorStop(1, "#ab681c");
       ctx.fillStyle = gold;
       ctx.beginPath(); ctx.arc(0, 0, p.size, 0, 6.2832); ctx.fill();
-      ctx.lineWidth = 1; ctx.strokeStyle = "#fff1b0"; ctx.stroke();
+      ctx.lineWidth = .5; ctx.strokeStyle = "#fff1b0"; ctx.stroke();
       ctx.strokeStyle = "#b87821";
       ctx.beginPath(); ctx.arc(0, 0, p.size * .77, 0, 6.2832); ctx.stroke();
       if (width > .3) {
         ctx.textAlign = "center"; ctx.textBaseline = "middle";
         ctx.font = `bold ${p.size * 1.25}px Georgia, serif`;
-        ctx.fillStyle = "#885018"; ctx.fillText("₽", .6, 1);
+        ctx.fillStyle = "#885018"; ctx.fillText("₽", .3, .5);
         ctx.fillStyle = "#fff1b0"; ctx.globalAlpha = alpha * .7; ctx.fillText("₽", 0, 0);
       }
       ctx.globalAlpha = alpha * (.35 + .35 * Math.sin(p.spin));
-      ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.7;
+      ctx.strokeStyle = "#ffffff"; ctx.lineWidth = .85;
       ctx.beginPath(); ctx.arc(0, 0, p.size * .9, 3.5, 5.1); ctx.stroke();
       ctx.restore();
     }
@@ -937,7 +937,7 @@
         for (let i = 0; i < sparks; i++) spark(x, y, gold, reduce ? .3 : .65 + tier * .05);
         if (!reduce) {
           ring(x, y, "#fff1b0");
-          for (let i = 0; i < [16, 20, 24, 28, 34, 40][tier]; i++) coin(rnd(.05, .95));
+          for (let i = 0; i < [0, 20, 24, 28, 34, 40][tier]; i++) coin(rnd(.05, .95));
           if (tier >= 3) schedule(token, () => {
             for (let i = 0; i < 18; i++) spark(x, y, gold, .55);
             kick();
@@ -1041,7 +1041,7 @@
     document.addEventListener("pointerdown", unlock, { once: true, passive: true });
     // rig: the audio context and its output while sound is on and unlocked (null otherwise): the shake sounds are synthesised on it
     const rig = () => (on && unlocked && ctx && ctx.state === "running" ? { ctx, out: gain } : null);
-    let noiseBuf = null, lastCoin = -1, coinUntil = [];
+    let noiseBuf = null, lastCoin = -1, coinUntil = [], caseRollRaf = 0;
     const caseVoices = new Set();
     function caseTone(freq, peak, duration, delay = 0, end = freq, type = "sine") {
       const r = rig(); if (!r || document.hidden) return;
@@ -1072,7 +1072,36 @@
       s.onended = () => { caseVoices.delete(s); s.disconnect(); f.disconnect(); g.disconnect(); };
       s.start(t); s.stop(t + .24);
     }
+    function stopCaseRoll() {
+      cancelAnimationFrame(caseRollRaf); caseRollRaf = 0;
+    }
+    // Each passing card clicks the ratchet; the slowing strip naturally spaces the clicks farther apart.
+    function caseRoll(ms = 6500) {
+      stopCaseRoll();
+      const start = performance.now(), end = start + ms;
+      let lastIndex = null, lastAt = -Infinity;
+      function tick(now) {
+        if (now >= end || !rig() || document.hidden || $("tab-case").classList.contains("hidden")) {
+          caseRollRaf = 0; return;
+        }
+        const box = $("roll").getBoundingClientRect();
+        const index = Math.floor((box.left + box.width / 2 - $("track").getBoundingClientRect().left) / CARD_W);
+        if (lastIndex !== null && index !== lastIndex && now - lastAt >= 32) {
+          const p = Math.min(1, Math.max(0, (now - start) / ms));
+          const f = 1050 + (1 - p) * 650 + Math.random() * 45;
+          const v = .025 + p * .022;
+          caseTone(f, v, .018 + p * .025, 0, f * .55, "triangle");
+          caseTone(f * 2.37, v * .28, .035 + p * .025);
+          caseTone(240, v * .5, .045, 0, 115);
+          lastAt = now;
+        }
+        lastIndex = index;
+        caseRollRaf = requestAnimationFrame(tick);
+      }
+      caseRollRaf = requestAnimationFrame(tick);
+    }
     function clearCase() {
+      stopCaseRoll();
       for (const s of caseVoices) { try { s.stop(); } catch (e) { /* already stopped */ } }
       caseVoices.clear(); coinUntil = []; lastCoin = -1;
     }
@@ -1082,6 +1111,7 @@
       caseTone(1220, .028, .05, .055, 880, "triangle");
     }
     function caseWin(code, hasSkin) {
+      stopCaseRoll();
       if (document.hidden || $("tab-case").classList.contains("hidden")) return;
       play(code === "ak" ? "top" : hasSkin ? "win" : "tickets");
       [1046.5, 1318.5, 1568].forEach((f, i) => caseTone(f, .024, .25, i * .045));
@@ -1098,7 +1128,7 @@
       caseTone(f * 1.47, v * .35, .105);
       caseTone(460, v * .3, .035, 0, 240, "triangle");
     }
-    return { load, unlock, play, toggle, rig, caseOpen, caseWin, coinHit, clearCase };
+    return { load, unlock, play, toggle, rig, caseOpen, caseRoll, caseWin, coinHit, clearCase };
   })();
 
   // text: the bot's own result (HTML) when it answered right here; null when replaying from the chat.
@@ -1118,7 +1148,7 @@
     setTimeout(() => {
       slideTo(WIN, 6.5, 16);
       tickWhileSliding(6500);
-      SFX.play("roll", 0.3);
+      SFX.caseRoll(6500);
       setTimeout(() => $("roll").classList.add("slowing"), 5100);
     }, 300);
     setTimeout(() => {
