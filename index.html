@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru">
+<html lang="ru" class="splash-open">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
@@ -18,7 +18,15 @@
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text);
          font: 16px/1.4 -apple-system, "Segoe UI", Roboto, sans-serif; }
+  html.splash-open, html.splash-open body { overflow: hidden; overscroll-behavior: none; }
   main { max-width: 480px; margin: 0 auto; padding: 16px 16px 96px; }
+  .section-heading { position: relative; padding: 2px 0 12px 13px; margin-bottom: 14px; }
+  .section-heading::before { content: ""; position: absolute; left: 0; top: 5px; bottom: 15px; width: 3px;
+                             border-radius: 3px; background: #ffd43b; }
+  .section-heading h1 { margin: 0 0 5px; font-size: 22px; font-weight: 800; letter-spacing: -.025em; line-height: 1.2; }
+  .section-heading .sub { margin: 0; font-size: 13px; line-height: 1.45; color: #a6b3c1; }
+  .case-heading { padding-right: 48px; border-bottom: 1px solid rgba(255, 212, 59, .15); }
+  .case-heading .snd { top: 0; right: 0; }
   h1 { font-size: 22px; margin: 4px 0 2px; }
   .sub { color: var(--hint); font-size: 14px; margin-bottom: 16px; }
   .badges { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
@@ -61,9 +69,12 @@
             background: transparent; color: var(--accent); font-size: 15px; font-weight: 600; }
   .hidden { display: none; }
   .tabs { display: flex; gap: 6px; background: var(--card); border-radius: 12px; padding: 4px; margin-bottom: 16px; }
-  .tabs button { flex: 1; min-width: 0; padding: 10px 6px; border: 0; border-radius: 9px; background: transparent; color: var(--hint);
-                 font-size: 14px; font-weight: 600; white-space: nowrap; }
+  .tabs button { flex: 1 1 0; min-width: 0; padding: 10px 0; border: 0; border-radius: 9px; background: transparent; color: var(--hint);
+                 font-size: clamp(11px, 3.5vw, 14px); font-weight: 600; white-space: nowrap; }
+  .tabs button[data-tab="progress"] { flex-grow: 1.12; }
+  .tabs button[data-tab="reviews"] { flex: .5 1 0; }
   .tabs button.on { background: var(--accent); color: var(--accent-text); }
+  .tabs button:focus-visible { outline: 2px solid #ffd43b; outline-offset: 2px; }
   .reviews-lead { margin-bottom: 14px; padding: 14px; border-radius: 14px; background: linear-gradient(135deg, rgba(89, 177, 255, .16), rgba(135, 99, 255, .16));
                   box-shadow: inset 0 0 0 1px rgba(141, 205, 255, .16); color: var(--hint); font-size: 14px; line-height: 1.45; }
   .reviews-grid { columns: 2; column-gap: 10px; }
@@ -79,12 +90,17 @@
   .progress-hero.music::before { content: ""; position: absolute; z-index: -1; width: 142%; height: 48%; top: 27%; left: -21%; pointer-events: none;
                                   background: linear-gradient(108deg, transparent 28%, rgba(255, 244, 181, .18) 48%, transparent 66%); transform: skewX(-18deg); animation: musicGlow 5.2s ease-in-out infinite; }
   @keyframes musicGlow { 0%, 36% { transform: translateX(-36%) skewX(-18deg); opacity: 0; } 55% { opacity: 1; } 100% { transform: translateX(58%) skewX(-18deg); opacity: 0; } }
-  .p-label { position: relative; color: #e0d8ff; font-size: 12px; text-transform: uppercase; letter-spacing: .07em; }
-  .p-tickets { position: relative; margin-top: 3px; font-size: 36px; font-weight: 800; letter-spacing: -.04em; }
-  .p-tickets span { font-size: 15px; font-weight: 600; letter-spacing: 0; color: #fff0b3; }
-  .p-chance { position: relative; margin-top: 5px; color: #f8f5ff; font-size: 14px; }
-  .p-visual { position: relative; overflow: hidden; margin: 14px 0 2px; border: 1px solid rgba(255, 227, 141, .46); border-radius: 13px; background: #1c2131; box-shadow: 0 10px 22px rgba(0, 0, 0, .20); }
-  .p-visual img { display: block; width: 100%; aspect-ratio: 12 / 7; object-fit: cover; background: #1c2131; }
+  .p-label { position: relative; color: #fff0bd; font-size: 14px; font-weight: 650; line-height: 1.35; }
+  .p-tickets { position: relative; display: flex; align-items: baseline; gap: 8px; margin-top: 8px; line-height: 1.1; }
+  #p-tickets { font-size: 38px; font-weight: 800; letter-spacing: -.04em; font-variant-numeric: tabular-nums; color: #fff; }
+  .p-tickets span + span { font-size: 14px; font-weight: 600; color: #fff0b3; }
+  .p-chance { position: relative; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255, 240, 179, .18); color: #f8f5ff; font-size: 13px; line-height: 1.4; }
+  .p-visual { position: relative; overflow: hidden; margin: 12px 0 0; border: 1px solid rgba(255, 227, 141, .36); border-radius: 11px; background: #1c2131; }
+  .p-visual:not(.hidden) { display: grid; grid-template-columns: 40% minmax(0, 1fr); align-items: center; }
+  .p-visual img { display: block; width: 100%; height: auto; aspect-ratio: 4 / 5; object-fit: contain; background: #1c2131; }
+  .p-visual-copy { padding: 10px 12px; color: #d4dbe5; font-size: 12px; line-height: 1.4; }
+  .p-visual-copy b { display: block; margin-bottom: 7px; color: #ffe28a; font-size: 15px; line-height: 1.2; }
+  .p-visual-copy span { display: block; margin-top: 5px; }
   .p-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 12px 0; }
   .p-stat { padding: 12px; border-radius: 13px; background: var(--card); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .045); }
   .p-stat b { display: block; margin-top: 2px; font-size: 18px; color: var(--accent); }
@@ -139,6 +155,12 @@
   .item-chance { position: absolute; top: 8px; left: 8px; background: rgba(0, 0, 0, .45); color: #fff;
                  border-radius: 6px; padding: 1px 7px; font-size: 12px; font-weight: 600; }
   .item.top { box-shadow: 0 0 0 1px #e4ae39 inset; }
+  #items { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+  #items .item { padding: 0 7px 8px; border-radius: 9px; border-bottom-width: 2px; }
+  #items .item img, #items .item svg { aspect-ratio: 1.45; }
+  #items .item-wear { font-size: 11px; line-height: 1.3; overflow-wrap: anywhere; }
+  #items .item-price { margin-top: 3px; font-size: 14px; }
+  #items .item-chance { top: 5px; left: 5px; padding: 1px 5px; font-size: 10px; }
   /* the top prize gets a slow shine running across it */
   .item.top::after { content: ""; position: absolute; top: 0; bottom: 0; left: -60%; width: 40%; pointer-events: none;
                      background: linear-gradient(100deg, transparent, rgba(255, 235, 170, .16), transparent);
@@ -227,6 +249,12 @@
   .feed-track { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none;
                 -webkit-overflow-scrolling: touch; }
   .feed-track::-webkit-scrollbar { display: none; }
+  .feed-track:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+  @media (hover: hover) and (pointer: fine) {
+    .feed-track { scrollbar-width: thin; scrollbar-color: #687687 transparent; padding-bottom: 6px; }
+    .feed-track::-webkit-scrollbar { display: block; height: 5px; }
+    .feed-track::-webkit-scrollbar-thumb { background: #687687; border-radius: 5px; }
+  }
   /* a compact chip: a small picture on the left, three short lines on the right */
   .fd { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; min-width: 0; background: #312f3d;
         border-radius: 8px; padding: 3px 9px 3px 3px; border-bottom: 2px solid var(--rarity, #8b9aab); }
@@ -531,8 +559,10 @@
     <button type="button" data-tab="reviews">💬</button>
   </nav>
   <section id="tab-progress">
-    <h1>🎯 Билеты и шансы</h1>
-    <div class="sub">Выполняй бесплатные действия, забирай награды и следи за шансом в розыгрыше.</div>
+    <header class="section-heading">
+      <h1>🎯 Билеты и шансы</h1>
+      <div class="sub">Выполняй задания, собирай билеты.<br>Больше билетов — выше шанс в розыгрыше.</div>
+    </header>
     <div id="progress-loading" class="p-empty">Загружаем твой прогресс…</div>
     <div id="progress-offline" class="p-empty hidden"></div>
     <div id="progress-content" class="hidden">
@@ -540,7 +570,10 @@
         <div class="p-label" id="p-prize">Текущий розыгрыш</div>
         <div class="p-tickets"><span id="p-tickets">0</span> <span>билетов</span></div>
         <div class="p-chance" id="p-chance"></div>
-        <div class="p-visual hidden" id="p-visual"><img id="p-visual-img" alt="Призы музыкального розыгрыша" decoding="async"></div>
+        <div class="p-visual hidden" id="p-visual">
+          <img id="p-visual-img" alt="Афиша музыкального розыгрыша" decoding="async">
+          <div class="p-visual-copy"><b>6 призовых мест</b><span>3 музыкальных набора CS2</span><span>3 пополнения Steam<br>по 100 ₽</span></div>
+        </div>
       </div>
       <div class="p-grid">
         <div class="p-stat"><span>👥 Друзья</span><b id="p-friends">0</b></div>
@@ -576,12 +609,14 @@
   <a id="game-link" class="game-link" href="game.html">🐥 Играть в «Цыпа-бум» <span>+3 билета за прохождение</span></a>
 
   <section id="tab-case" class="hidden">
-    <button type="button" id="snd" class="snd" aria-label="Звук" aria-pressed="true">🔊</button>
-    <h1>💎 Бесплатный кейс</h1>
-    <div class="sub">Раз в сутки и бесплатно. Внутри — настоящие скины CS2.</div>
+    <header class="section-heading case-heading">
+      <button type="button" id="snd" class="snd" aria-label="Звук" aria-pressed="true">🔊</button>
+      <h1>Бесплатный кейс</h1>
+      <div class="sub">Одно открытие в сутки.<br>Настоящие скины CS2 — внутри.</div>
+    </header>
     <div class="feed hidden" id="feed">
       <div class="feed-head"><span class="live-dot"></span><span>Live · последние дропы</span></div>
-      <div class="feed-track" id="feed-track"></div>
+      <div class="feed-track" id="feed-track" tabindex="0" role="region" aria-label="Последние выпадения — прокручиваемая лента"></div>
     </div>
     <div class="roll" id="roll"><div class="roll-marker"></div><div class="roll-track" id="track"></div></div>
     <div class="result hidden" id="result"></div>
@@ -798,8 +833,8 @@
     <div class="item${it.top ? " top" : ""}" style="--rarity:${it.rarity}">
       ${chance ? `<span class="item-chance">${it.chance}%</span>` : ""}
       ${it.img ? `<img src="${it.img}?v=3" alt="" width="156" height="114" decoding="async" draggable="false">` : TICKET}
-      <div class="item-wear">${it.wear}</div>
-      <div class="item-price">${it.price}</div>
+      <div class="item-wear">${chance && !it.img ? "В розыгрыш" : it.wear}</div>
+      <div class="item-price">${chance && !it.img ? "+3 билета" : it.price}</div>
     </div>`;
   $("items").innerHTML = ITEMS.map((it) => card(it)).join("");
   ITEMS.forEach((it) => { if (it.img) new Image().src = it.img + "?v=3"; });
@@ -2176,6 +2211,15 @@
   // The bot answers GET /api/case/feed with {items: [{id, code, who, age}]}, newest first; who is already masked.
   const FEED = (() => {
     const box = $("feed"), track = $("feed-track");
+    const desktopPointer = matchMedia("(hover: hover) and (pointer: fine)");
+    track.addEventListener("wheel", (event) => {
+      if (!desktopPointer.matches || event.ctrlKey || Math.abs(event.deltaX) >= Math.abs(event.deltaY)) return;
+      const max = track.scrollWidth - track.clientWidth;
+      const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? track.clientWidth : 1);
+      if (max <= 0 || (delta < 0 && track.scrollLeft <= 0) || (delta > 0 && track.scrollLeft >= max - 1)) return;
+      event.preventDefault();
+      track.scrollLeft += delta;
+    }, { passive: false });
     let list = [], rows = [], baseAt = 0, seen = null, lastKey = "", holdUntil = 0, busy = false;
     let pollTimer = 0, tickTimer = 0;
     const plural = (n, one, few, many) => {
@@ -2533,7 +2577,10 @@
       closed = true;
       video.pause();
       splash.classList.add("leaving");
-      setTimeout(() => splash.remove(), 280);
+      setTimeout(() => {
+        splash.remove();
+        document.documentElement.classList.remove("splash-open");
+      }, 280);
     }
     function cuePosterFrame() {
       if (Number.isFinite(video.duration)) video.currentTime = Math.min(posterTime, Math.max(0, video.duration - .05));
