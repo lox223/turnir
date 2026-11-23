@@ -194,6 +194,29 @@
   .result { text-align: center; background: var(--card); border-radius: 14px; padding: 14px; margin-bottom: 12px;
             font-size: 15px; }
   .result b { color: var(--accent); font-size: 18px; }
+  /* Sharing is optional; the image is made on this device, never uploaded. */
+  .share-win { width: 100%; min-height: 48px; margin: 0 0 12px; padding: 12px 16px; border: 1px solid #ffd43b;
+               border-radius: 12px; background: #ffd43b; color: #080a0d; font: 700 15px/1.3 -apple-system, 'Segoe UI', Roboto, sans-serif; cursor: pointer; }
+  .share-dialog { width: min(440px, calc(100% - 24px)); max-height: calc(100dvh - 24px); margin: auto; padding: 16px;
+                  overflow-y: auto; overscroll-behavior: contain; border: 1px solid #454335; border-radius: 18px;
+                  background: #11151a; color: #f7f7f2; box-shadow: 0 24px 90px #0009; }
+  .share-dialog::backdrop { background: #030509c9; }
+  .share-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+  .share-head h2 { margin: 0; font-size: 19px; }
+  .share-close { flex: none; width: 44px; height: 44px; border: 1px solid #49515a; border-radius: 50%; background: transparent;
+                 color: #f7f7f2; font-size: 22px; cursor: pointer; }
+  .share-image { display: block; width: 100%; height: auto; aspect-ratio: 1; border-radius: 9px; background: #080a0d; }
+  .share-copy { display: block; width: 100%; min-height: 110px; margin: 12px 0; padding: 11px; resize: vertical; border: 1px solid #49515a;
+                border-radius: 9px; background: #080a0d; color: #f7f7f2; font: 14px/1.5 -apple-system, 'Segoe UI', Roboto, sans-serif; }
+  .share-actions { display: grid; gap: 8px; }
+  .share-actions button { min-height: 46px; padding: 11px; border: 1px solid #49515a; border-radius: 9px; background: #20252b;
+                          color: #f7f7f2; font: 600 14px/1.35 -apple-system, 'Segoe UI', Roboto, sans-serif; cursor: pointer; }
+  .share-actions .share-primary { background: #ffd43b; color: #080a0d; border-color: #ffd43b; }
+  .share-actions button:disabled { opacity: .5; cursor: default; }
+  .share-hint { margin: 12px 0 0; font-size: 12px; line-height: 1.45; color: #b6bec7; }
+  .share-status { margin: 10px 0 0; min-height: 20px; font-size: 13px; color: #ffe589; }
+  .share-win:focus-visible, .share-dialog button:focus-visible, .share-copy:focus-visible { outline: 3px solid #fff0a3; outline-offset: 3px; }
+  body.share-open { overflow: hidden; }
   h2 { font-size: 17px; margin: 16px 0 10px; }
   /* Live strip above the case: the latest drops of everyone, newest on the left. */
   .feed { margin: 0 0 8px; }
@@ -394,6 +417,22 @@
   <button type="button" id="splash-start" aria-label="Запустить ролик со звуком"><span class="splash-play" aria-hidden="true"></span></button>
 </div>
 <canvas id="fx"></canvas>
+<dialog class="share-dialog" id="share-dialog" aria-labelledby="share-title" aria-describedby="share-hint">
+  <div class="share-head">
+    <h2 id="share-title">Поделиться выигрышем</h2>
+    <button type="button" class="share-close" id="share-close" aria-label="Закрыть карточку">×</button>
+  </div>
+  <img class="share-image hidden" id="share-image" alt="Карточка результата YooSkins" width="1080" height="1080">
+  <textarea class="share-copy" id="share-copy" aria-label="Текст для отправки" readonly></textarea>
+  <div class="share-actions">
+    <button type="button" class="share-primary hidden" id="share-native" disabled>Отправить картинку и текст</button>
+    <button type="button" id="share-save" disabled>Сохранить карточку</button>
+    <button type="button" id="share-telegram" disabled>Отправить текст в Telegram</button>
+    <button type="button" id="share-clipboard" disabled>Скопировать текст</button>
+  </div>
+  <p class="share-hint" id="share-hint"></p>
+  <p class="share-status" id="share-status" role="status" aria-live="polite"></p>
+</dialog>
 <!-- Shake bonus: full-screen stage (shown only while shaking) -->
 <div class="sk hidden" id="sk" role="dialog" aria-modal="true" aria-label="Тряска телефона">
   <div class="sk-stars"></div>
@@ -545,6 +584,7 @@
     </div>
     <div class="roll" id="roll"><div class="roll-marker"></div><div class="roll-track" id="track"></div></div>
     <div class="result hidden" id="result"></div>
+    <button type="button" class="share-win hidden" id="share-win">Поделиться выигрышем</button>
     <button type="button" id="spin">🎰 Крутить бесплатно</button>
     <div class="note" id="spin-note">Нажми — бот откроет кейс и пришлёт кнопку «🎰 Смотреть прокрутку».</div>
     <!-- Only on phones in Telegram (the script shows it); the bot decides when a shake counts. -->
@@ -758,7 +798,7 @@
     { code: "s500", img: "s500.png", wear: "FT / 0.2909", price: "5.00 ₽", chance: 13, rarity: "#4b69ff" },
     { code: "s833", img: "s833.png", wear: "MW / 0.0839", price: "8.33 ₽", chance: 5, rarity: "#8847ff" },
     { code: "s1249", img: "s1249.png", wear: "FN / 0.0114", price: "12.49 ₽", chance: 3, rarity: "#d32ce6" },
-    { code: "ak", img: "ak.png", wear: "FT / 0.3380", price: "23.32 ₽", chance: 1, rarity: "#eb4b4b", top: true },
+    { code: "ak", name: "AK-47 | Африканская сетка", img: "ak.png", wear: "FT / 0.3380", price: "23.32 ₽", chance: 1, rarity: "#eb4b4b", top: true },
   ];
   const card = (it, chance = true) => `
     <div class="item${it.top ? " top" : ""}" style="--rarity:${it.rarity}">
@@ -769,6 +809,195 @@
     </div>`;
   $("items").innerHTML = ITEMS.map((it) => card(it)).join("");
   ITEMS.forEach((it) => { if (it.img) new Image().src = it.img + "?v=2"; });
+
+  // Optional win sharing. No photo, referral id or caption leaves the page until the player chooses to send it.
+  const WIN_SHARE = (() => {
+    const dialog = $("share-dialog"), trigger = $("share-win"), image = $("share-image"), copy = $("share-copy");
+    const native = $("share-native"), save = $("share-save"), telegram = $("share-telegram"), clipboard = $("share-clipboard");
+    let current = null, revision = 0, objectURL = "", file = null, sending = false, opener = null;
+    const status = (text) => { $("share-status").textContent = text; };
+    const localPrice = (win) => win.price.replace(".", ",");
+    function revoke() {
+      if (objectURL) URL.revokeObjectURL(objectURL);
+      objectURL = "";
+      image.removeAttribute("src");
+      image.classList.add("hidden");
+    }
+    function close() { if (dialog.open) dialog.close(); }
+    dialog.addEventListener("close", () => {
+      revision++;
+      revoke();
+      document.body.classList.remove("share-open");
+      if (opener && opener.isConnected && !opener.classList.contains("hidden")) opener.focus();
+    });
+    $("share-close").addEventListener("click", close);
+    dialog.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") { event.preventDefault(); close(); }
+    });
+    dialog.addEventListener("click", (event) => { if (event.target === dialog) {
+      const box = dialog.getBoundingClientRect();
+      if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) close();
+    } });
+    function reset() {
+      current = null; file = null; revision++;
+      trigger.classList.add("hidden");
+      close(); revoke();
+    }
+    function setResult(win, confirmed = false) {
+      reset();
+      const user = inTelegram && tg.initDataUnsafe && tg.initDataUnsafe.user;
+      const uid = user && String(user.id);
+      // A #roll= replay is an unverified illustration, not proof that this user won a skin.
+      const personal = Boolean(confirmed && uid && /^[1-9]\d{0,15}$/.test(uid) && /^[A-Za-z0-9_]{5,32}$/.test(BOT));
+      const link = personal ? `https://t.me/${BOT}?start=r${uid}` : "";
+      const name = win.name || (win.img ? "Скин CS2" : "+3 билета в розыгрыше");
+      const text = win.img ? `Мне выпал ${name} за ${localPrice(win)} в YooSkins. Здесь открываю кейсы за приглашения.`
+        : "Мне выпало +3 билета в розыгрыше YooSkins. Здесь открываю кейсы за приглашения.";
+      current = { win, name, link, sample: !personal, text: personal ? `${text}\n\n${link}` : `Образец карточки — не подтверждение выигрыша.\n\n${text}` };
+      trigger.textContent = personal ? "Поделиться выигрышем" : "Посмотреть образец карточки";
+      trigger.classList.remove("hidden");
+    }
+    function loadImage(src) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        const timer = setTimeout(() => { img.src = ""; reject(new Error("image timeout")); }, 10000);
+        img.onload = () => { clearTimeout(timer); resolve(img); };
+        img.onerror = () => { clearTimeout(timer); reject(new Error("image unavailable")); };
+        img.src = src;
+      });
+    }
+    async function renderCard(result) {
+      const win = result.win;
+      const picture = await loadImage(win.img ? `${win.img}?v=2` : "data:image/svg+xml;charset=utf-8," + encodeURIComponent(TICKET));
+      const cv = document.createElement("canvas"); cv.width = cv.height = 1080;
+      const ctx = cv.getContext("2d");
+      if (!ctx) throw new Error("canvas unavailable");
+      const yellow = "#ffd43b", white = "#f7f7f2";
+      ctx.fillStyle = "#080a0d"; ctx.fillRect(0, 0, 1080, 1080);
+      // A restrained mesh recalls the Safari Mesh finish; it stays behind the weapon.
+      ctx.save();
+      ctx.beginPath(); ctx.rect(42, 258, 996, 430); ctx.clip();
+      ctx.strokeStyle = "#8a90651c"; ctx.lineWidth = 1;
+      for (let x = -500; x < 1600; x += 38) {
+        ctx.beginPath(); ctx.moveTo(x, 220); ctx.lineTo(x + 550, 720); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x, 220); ctx.lineTo(x - 550, 720); ctx.stroke();
+      }
+      ctx.restore();
+      // Uneven edges, not a generic rounded social-media template.
+      ctx.fillStyle = yellow;
+      [[24, 30, 785, 9], [30, 35, 8, 245], [1041, 80, 9, 930], [260, 1040, 790, 10], [30, 828, 9, 222]].forEach((r) => ctx.fillRect(...r));
+      ctx.fillStyle = "#080a0d";
+      for (let i = 0; i < 25; i++) {
+        ctx.fillRect(30 + i * 33, 29, 3 + i % 4, 4);
+        ctx.fillRect(1039, 100 + i * 35, 5, 3);
+      }
+      ctx.fillStyle = yellow;
+      ctx.beginPath(); ctx.moveTo(77, 105); ctx.lineTo(70, 70); ctx.lineTo(91, 85); ctx.lineTo(107, 60);
+      ctx.lineTo(124, 85); ctx.lineTo(145, 70); ctx.lineTo(137, 105); ctx.closePath(); ctx.fill();
+      ctx.fillRect(78, 112, 59, 6);
+      ctx.fillStyle = white; ctx.font = '900 43px "Segoe UI", Roboto, sans-serif'; ctx.fillText("YooSkins", 164, 110);
+      ctx.textAlign = "right"; ctx.fillStyle = "#adb5bd"; ctx.font = '600 24px "Segoe UI", Roboto, sans-serif';
+      ctx.fillText(result.sample ? "Образец карточки" : "Мой дроп из кейса", 994, 103);
+      ctx.textAlign = "left"; ctx.fillStyle = white; ctx.font = '900 91px "Segoe UI", Roboto, sans-serif';
+      ctx.fillText("Мне выпало", 74, 232);
+      ctx.save();
+      ctx.translate(540, 470); ctx.rotate(-.10);
+      const scale = Math.min(990 / picture.naturalWidth, 630 / picture.naturalHeight);
+      const w = picture.naturalWidth * scale, h = picture.naturalHeight * scale;
+      ctx.shadowColor = "#000a"; ctx.shadowBlur = 28; ctx.shadowOffsetY = 20;
+      ctx.drawImage(picture, -w / 2, -h / 2, w, h);
+      ctx.restore();
+      ctx.fillStyle = yellow; ctx.fillRect(76, 695, 74, 5);
+      ctx.fillStyle = "#b8c0c7"; ctx.font = '600 25px "Segoe UI", Roboto, sans-serif';
+      ctx.fillText(win.img ? win.wear : "Больше шансов в розыгрыше", 76, 739);
+      if (win.code === "ak") {
+        ctx.fillStyle = white; ctx.font = '800 43px "Segoe UI", Roboto, sans-serif'; ctx.fillText("AK-47", 76, 799);
+        ctx.font = '700 39px "Segoe UI", Roboto, sans-serif'; ctx.fillText("Африканская сетка", 76, 852);
+      } else {
+        ctx.fillStyle = white; ctx.font = `800 ${win.img ? 45 : 39}px "Segoe UI", Roboto, sans-serif`;
+        ctx.fillText(result.name, 76, 812, 670);
+      }
+      ctx.textAlign = "right"; ctx.fillStyle = yellow; ctx.font = '900 68px "Segoe UI", Roboto, sans-serif';
+      ctx.fillText(win.img ? localPrice(win) : "+3 билета", 995, 921, 900);
+      ctx.textAlign = "left"; ctx.strokeStyle = "#394047"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(76, 952); ctx.lineTo(995, 952); ctx.stroke();
+      ctx.fillStyle = "#c3cad1"; ctx.font = '500 23px "Segoe UI", Roboto, sans-serif';
+      ctx.fillText(result.sample ? "Предпросмотр. Приз не выдаётся." : "Кейсы за приглашения. Без гарантии выигрыша.", 76, 992);
+      ctx.fillStyle = yellow; ctx.font = '700 24px "Segoe UI", Roboto, sans-serif';
+      ctx.fillText(result.link.replace(/^https:\/\//, "") || "Личная ссылка появится после открытия из бота", 76, 1025, 910);
+      return new Promise((resolve, reject) => cv.toBlob((blob) => blob ? resolve(blob) : reject(new Error("PNG export failed")), "image/png"));
+    }
+    function supportsFiles(value) {
+      try { return Boolean(navigator.share && navigator.canShare && value && navigator.canShare({ files: [value] })); }
+      catch (_) { return false; }
+    }
+    async function open() {
+      if (!current || dialog.open) return;
+      opener = document.activeElement;
+      const token = ++revision, result = current;
+      revoke();
+      copy.value = result.text;
+      $("share-title").textContent = result.sample ? "Образец карточки" : "Поделиться выигрышем";
+      $("share-hint").textContent = result.sample
+        ? "Это пример, не реальный выигрыш. Личная ссылка и отправка появятся после открытия кейса из бота в Telegram."
+        : "Системное меню отправляет картинку, если устройство это поддерживает. Кнопка Telegram отправляет только текст и ссылку; PNG можно прикрепить вручную.";
+      native.classList.add("hidden"); native.disabled = true; save.disabled = true;
+      telegram.disabled = result.sample; clipboard.disabled = result.sample;
+      dialog.showModal(); document.body.classList.add("share-open"); status("Готовим карточку…");
+      try {
+        const blob = file ? file : await renderCard(result);
+        if (token !== revision || current !== result || !dialog.open) return;
+        file = typeof File === "function" ? new File([blob], `yooskins-${result.win.code}${result.sample ? "-preview" : ""}.png`, { type: "image/png" }) : blob;
+        objectURL = URL.createObjectURL(file);
+        image.src = objectURL; image.alt = `${result.sample ? "Образец: " : "Мне выпало: "}${result.name}, ${localPrice(result.win)}`;
+        image.classList.remove("hidden"); save.disabled = false;
+        const canSend = !result.sample && supportsFiles(file);
+        native.classList.toggle("hidden", !canSend); native.disabled = !canSend || sending;
+        status("");
+      } catch (_) {
+        if (token !== revision || !dialog.open) return;
+        status("Не получилось создать картинку. Закрой карточку и попробуй снова. Текст можно отправить отдельно.");
+      }
+    }
+    trigger.addEventListener("click", open);
+    native.addEventListener("click", async () => {
+      if (!current || current.sample || sending || !file || !supportsFiles(file)) return;
+      sending = true; native.disabled = true;
+      const result = current, token = revision;
+      try {
+        // The file was prepared earlier; call share during this tap's user activation.
+        await navigator.share({ files: [file], title: "Мой выигрыш в YooSkins", text: result.text });
+        if (token === revision) status("Меню отправки закрыто.");
+      } catch (error) {
+        if (token === revision && error.name !== "AbortError") status("Устройство не передало картинку. Сохрани PNG и прикрепи его вручную.");
+      } finally { sending = false; if (current && !current.sample) native.disabled = false; }
+    });
+    save.addEventListener("click", () => {
+      if (!objectURL || !file) return;
+      const a = document.createElement("a"); a.href = objectURL; a.download = file.name || "yooskins-win.png";
+      document.body.appendChild(a); a.click(); a.remove();
+      status("Если скачивание не началось, зажми картинку и выбери сохранение. Telegram-текст не прикрепляет PNG автоматически.");
+    });
+    telegram.addEventListener("click", () => {
+      if (!current || current.sample || !inTelegram) return;
+      const caption = current.text.slice(0, current.text.lastIndexOf("\n\n"));
+      tg.openTelegramLink("https://t.me/share/url?" + new URLSearchParams({ url: current.link, text: caption }));
+    });
+    clipboard.addEventListener("click", async () => {
+      if (!current || current.sample) return;
+      const token = revision;
+      try {
+        if (!navigator.clipboard || !navigator.clipboard.writeText) throw new Error("clipboard unavailable");
+        await navigator.clipboard.writeText(current.text);
+        if (token === revision) status("Текст и личная ссылка скопированы.");
+      } catch (_) {
+        if (token !== revision || !dialog.open) return;
+        copy.focus(); copy.select();
+        status("Выделили текст. Зажми его и выбери «Копировать».");
+      }
+    });
+    return { reset, setResult };
+  })();
 
   // The strip: random cards (weighted like the case) with the prize at WIN; it slides so WIN stops under the line.
   const CARD_W = 110 + 8, STRIP = 56, WIN = 48;
@@ -1138,9 +1367,10 @@
   })();
 
   // text: the bot's own result (HTML) when it answered right here; null when replaying from the chat.
-  function replay(code, text = null, done = null) {
+  function replay(code, text = null, done = null, confirmed = false) {
     const win = ITEMS.find((it) => it.code === code);
     if (!win) return;
+    WIN_SHARE.reset();
     FEED.hold(7500);   // the live strip would show this very drop before the roulette stops
     if (!text) $("spin").classList.add("hidden");
     $("spin-note").textContent = "";
@@ -1183,6 +1413,7 @@
         $("result").appendChild(document.createElement("br"));
         $("result").appendChild(take);
       }
+      WIN_SHARE.setResult(win, confirmed);
       if (done) done();
     }, 7000);
   }
@@ -1325,6 +1556,7 @@
 
   // bonus: the extra spin unlocked by shaking the phone (the bot checks that it really was unlocked)
   async function spinLive(bonus = false) {
+    WIN_SHARE.reset();
     const button = $("spin");
     button.disabled = true;
     button.textContent = bonus ? "🌀 Открываем суперкейс…" : "🎰 Крутим…";
@@ -1349,7 +1581,7 @@
       reset();
       return;
     }
-    replay(data.code, data.text, reset);
+    replay(data.code, data.text, reset, true);
   }
 
   function spin() {
