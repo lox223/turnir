@@ -141,6 +141,23 @@
                text-decoration: none; }
   #game-link.hidden { display: none; }
   .game-link span { display: block; font-weight: 500; font-size: 12px; opacity: .8; }
+  .assault-card { margin: -4px 0 16px; padding: 15px; border: 1px solid #5d718d; border-radius: 14px;
+                  background: linear-gradient(135deg, #172b47, #101e33); box-shadow: inset 0 1px #ffffff12, 0 8px 20px #0002; }
+  .assault-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .assault-title { color: #fff1bd; font-size: 17px; font-weight: 800; }
+  .assault-count { color: #c8ddff; font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .assault-bar { height: 8px; margin: 10px 0; overflow: hidden; border-radius: 999px; background: #071221; }
+  .assault-fill { width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #ffc84f, #ff9e45); transition: width .35s ease; }
+  .assault-start, .assault-copy, .assault-result { font-size: 13px; line-height: 1.45; }
+  .assault-start { color: #9db5d6; }
+  .assault-copy { margin-top: 7px; color: #d9e5f4; }
+  .assault-result { margin-top: 7px; color: #fff1bd; font-weight: 700; }
+  #assault-play { display: block; width: 100%; margin-top: 12px; padding: 11px 12px; border: 1px solid #8099bb; border-radius: 10px;
+                  background: #243e5e; color: #f5f8ff; font: 750 14px/1.2 -apple-system, "Segoe UI", Roboto, sans-serif; text-align: center; text-decoration: none; }
+  #assault-play:focus-visible, #assault-spin:focus-visible { outline: 2px solid #fff1b0; outline-offset: 3px; }
+  #assault-spin { width: 100%; margin-top: 10px; padding: 11px 12px; border: 1px solid #ffe27a; border-radius: 10px;
+                  background: #f7c531; color: #241c08; font: 800 14px/1.2 -apple-system, "Segoe UI", Roboto, sans-serif; }
+  #assault-spin:disabled { border-color: #526171; background: #35404d; color: #c0c9d3; cursor: wait; }
   /* Case cards look like the market's: dark card, skin, wear / float, price. */
   .items { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-bottom: 12px; }
   .item { position: relative; isolation: isolate; background: #312f3d; border-radius: 12px; padding: 0 10px 10px;
@@ -638,6 +655,14 @@
 
   <!-- The slingshot game lives on its own page (game.html); the query goes along so it keeps the bot's address. -->
   <a id="game-link" class="game-link" href="game.html">🐥 Играть в «Цыпа-бум» <span>+5 билетов за прохождение</span></a>
+  <section id="assault-card" class="assault-card hidden" aria-live="polite">
+    <div class="assault-head"><div class="assault-title">Штурм Цыпа-бум</div><div class="assault-count" id="assault-count">0 из 30</div></div>
+    <div class="assault-bar" aria-hidden="true"><div class="assault-fill" id="assault-fill"></div></div>
+    <div class="assault-start" id="assault-start"></div>
+    <div class="assault-copy" id="assault-copy"></div>
+    <div class="assault-result hidden" id="assault-result"></div>
+    <a id="assault-play" href="game.html?mode=assault">Играть в штурм</a>
+  </section>
 
   <section id="tab-case" class="hidden">
     <header class="section-heading case-heading">
@@ -658,6 +683,7 @@
     <div class="result hidden" id="result" role="status" aria-atomic="true"></div>
     <button type="button" class="share-win hidden" id="share-win">Поделиться выигрышем</button>
     <button type="button" id="spin">Крутить бесплатно</button>
+    <button type="button" id="assault-spin" class="hidden">Призовой кейс · 0</button>
     <div class="note" id="spin-note">Нажми — бот откроет кейс и пришлёт кнопку «🎰 Смотреть прокрутку».</div>
     <!-- Only on phones in Telegram (the script shows it); the bot decides when a shake counts. -->
     <div class="sk-card hidden" id="sk-card">
@@ -1631,10 +1657,12 @@
   function replay(code, text = null, done = null, confirmed = false) {
     const win = ITEMS.find((it) => it.code === code);
     CASE_ROLL.cancel();
+    ASSAULT.syncSpin(true);
     WIN_SHARE.reset();
     if (!win) {
       $("result").classList.remove("hidden", "revealed");
       $("result").textContent = "Не удалось показать этот дроп. Проверь «Мои призы» в боте.";
+      ASSAULT.syncSpin(false);
       if (done) done();
       return;
     }
@@ -1644,7 +1672,7 @@
     $("result").classList.remove("revealed");
     $("result").classList.add("hidden");
     let released = false;
-    const release = () => { if (!released) { released = true; if (done) done(); } };
+    const release = () => { if (!released) { released = true; ASSAULT.syncSpin(false); if (done) done(); } };
     CASE_ROLL.start(win, (silent) => {
       const winCard = $("track").children[WIN];
       if (!silent) {
@@ -1788,6 +1816,62 @@
     return { refresh() { if (!loaded || !content.classList.contains("hidden")) request(); } };
   })();
 
+  const ASSAULT = (() => {
+    const card = $("assault-card"), count = $("assault-count"), fill = $("assault-fill"), start = $("assault-start");
+    const copy = $("assault-copy"), result = $("assault-result"), prizeSpin = $("assault-spin");
+    const GOAL = 30;
+    let ticketsTab = false, busy = false, bonusCases = 0, hasAssault = false;
+    const number = (value, minimum, maximum) => Number.isInteger(value) && value >= minimum && value <= maximum ? value : minimum;
+    const show = (value) => card.classList.toggle("hidden", !ticketsTab || !value);
+    const formatStart = (epoch) => {
+      const date = new Date(epoch * 1000);
+      return Number.isFinite(date.getTime()) ? new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(date) : "";
+    };
+    function render(raw) {
+      const assault = raw && typeof raw === "object" ? raw : null;
+      const status = assault && ["scheduled", "active", "closed"].includes(assault.status) ? assault.status : "none";
+      bonusCases = number(assault && assault.bonus_cases, 0, 100000);
+      prizeSpin.textContent = `Призовой кейс · ${bonusCases}`;
+      prizeSpin.classList.toggle("hidden", bonusCases < 1);
+      if (status === "none") { hasAssault = false; show(false); return; }
+      hasAssault = true;
+      const goal = number(assault.goal, 1, 100000);
+      const finished = number(assault.count, 0, goal);
+      const done = number(assault.done, 0, 9);
+      const place = Number.isInteger(assault.place) && assault.place > 0 && assault.place <= goal ? assault.place : null;
+      count.textContent = `${finished} из ${goal}`;
+      fill.style.width = `${Math.min(100, finished / goal * 100)}%`;
+      const epoch = typeof assault.starts_at === "number" && Number.isFinite(assault.starts_at) && assault.starts_at > 0 && assault.starts_at <= 4102444800 ? assault.starts_at : 0;
+      const date = epoch ? formatStart(epoch) : "";
+      start.textContent = status === "scheduled" ? (date ? `Старт: ${date}` : "Старт скоро")
+        : status === "active" ? (date ? `Штурм начался: ${date}` : "Штурм идёт") : "Штурм завершён";
+      copy.textContent = `После ${goal} финишей первые 3 получат по 2 дополнительных открытия. Каждому финишировавшему — +1 билет в текущем розыгрыше при выполнении условий допуска. Один аккаунт засчитывается один раз. Места определяет порядок подтверждения сервером. Штурм действует до завершения текущего розыгрыша.`;
+      result.classList.toggle("hidden", status === "scheduled");
+      if (status === "active") result.textContent = place
+        ? `Место ${place} закреплено. Ждём общей цели.`
+        : `Пройдено уровней: ${done} из 9.` + (finished >= 3 ? " Призовые места заняты. Помоги команде открыть награды!" : "");
+      if (status === "closed" && place) result.textContent = place <= 3
+        ? `Твоё место: ${place}. Призовые открытия доступны на вкладке «Кейс» при выполнении условий допуска.`
+        : `Твоё место: ${place}. Общая цель достигнута, дополнительный билет начисляется при выполнении условий допуска.`;
+      if (status === "closed" && !place) result.textContent = `Общий итог: ${finished} из ${goal} финишей.`;
+      show(true);
+    }
+    async function refresh() {
+      if (!live || busy) return;
+      busy = true;
+      try {
+        const response = await fetch(API.replace(/\/$/, "") + "/api/assault", {
+          method: "POST", headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" },
+          body: JSON.stringify({ initData: tg.initData, action: "state" }),
+        });
+        const data = await response.json();
+        if (!data || data.error) render(null); else render(data.assault);
+      } catch (_) { render(null); } finally { busy = false; }
+    }
+    prizeSpin.addEventListener("click", () => { if (bonusCases > 0) spinLive(false, true); });
+    return { refresh, setTicketsTab(value) { ticketsTab = value; show(hasAssault); }, syncSpin(disabled) { prizeSpin.disabled = disabled; } };
+  })();
+
   // Every read from the bot goes through here. timeoutMs > 0 aborts a request that hangs (the tunnel is reconnecting,
   // the app sat in the background): without it one hung request froze the live strip and the shake card until a reload.
   async function apiJSON(path, init = {}, timeoutMs = 0) {
@@ -1804,21 +1888,38 @@
     : inTelegram ? "Нажми — бот пришлёт кнопку «💎 Открыть кейс», с ней кейс крутится прямо здесь." : "";
 
   // bonus: the extra spin unlocked by shaking the phone (the bot checks that it really was unlocked)
-  async function spinLive(bonus = false) {
+  let spinBusy = false, assaultRequestId = "";
+  async function spinLive(bonus = false, assault = false) {
     WIN_SHARE.reset();
     const button = $("spin");
-    if (button.disabled) return;
+    if (spinBusy || button.disabled) return;
+    spinBusy = true;
     button.disabled = true;
-    button.textContent = bonus ? "Открываем суперкейс…" : "Крутим…";
+    ASSAULT.syncSpin(true);
+    button.textContent = assault ? "Открываем призовой кейс…" : bonus ? "Открываем суперкейс…" : "Крутим…";
     SHAKE.lock(true);
     SFX.unlock();
-    const reset = () => { button.disabled = false; button.textContent = "Крутить бесплатно"; SHAKE.lock(false); SHAKE.refresh(); };
+    const reset = () => {
+      spinBusy = false;
+      button.disabled = false;
+      button.textContent = "Крутить бесплатно";
+      ASSAULT.syncSpin(false);
+      SHAKE.lock(false);
+      SHAKE.refresh();
+      if (assault) ASSAULT.refresh();
+    };
     let data;
     try {
+      const payload = { initData: tg.initData, bonus };
+      if (assault) {
+        if (!assaultRequestId) assaultRequestId = crypto.randomUUID();
+        payload.assault = true;
+        payload.request_id = assaultRequestId;
+      }
       const r = await fetch(API.replace(/\/$/, "") + "/api/case/spin", {
         method: "POST",
         headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" },
-        body: JSON.stringify({ initData: tg.initData, bonus }),
+        body: JSON.stringify(payload),
       });
       data = await r.json();
     } catch (e) {
@@ -1832,6 +1933,7 @@
       reset();
       return;
     }
+    if (assault && typeof data.code === "string" && data.code) assaultRequestId = "";
     replay(data.code, data.text, reset, true);
   }
 
@@ -2672,6 +2774,7 @@
     $("tab-tourney").classList.toggle("hidden", name !== "tourney");
     $("tab-reviews").classList.toggle("hidden", name !== "reviews");
     $("game-link").classList.toggle("hidden", name === "reviews");
+    ASSAULT.setTicketsTab(name === "progress");
     $("note").textContent = "";
     // The case and progress tabs have their own controls; Telegram's bottom button is only for the tournament form.
     if (inTelegram) {
@@ -2684,13 +2787,14 @@
     }
     window.scrollTo(0, 0);
     if (name === "case") { SFX.load(); FEED.start(); SHAKE.refresh(); } else { CASE_ROLL.finish(true); FEED.stop(); FX.clear(); SFX.clearCase(); }
-    if (name === "progress") PROGRESS.refresh();
+    if (name === "progress") { PROGRESS.refresh(); ASSAULT.refresh(); }
   }
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) { CASE_ROLL.finish(true); FX.clear(); SFX.clearCase(); }
   });
   document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
   $("game-link").href = "game.html" + location.search;
+  $("assault-play").href = "game.html?mode=assault" + (location.search ? "&" + location.search.slice(1) : "");
 
   const SPLASH = (() => {
     const splash = $("splash"), poster = $("splash-poster"), video = $("splash-video"), start = $("splash-start");
