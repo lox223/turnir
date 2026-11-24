@@ -121,7 +121,7 @@
 <script>
 "use strict";
 // ============================================================================================
-// «Цыпа-бум»: a slingshot game. Yellow chicks against red pests on six levels; the last three are wider
+// «Цыпа-бум»: a slingshot game. Yellow chicks against red pests on nine levels; the last six are wider
 // than the screen and the camera moves over them.
 // The physics is our own (boxes and circles, sequential impulses with warm starting), so the page
 // needs no library. Game is pure logic; the renderer below only reads it.
@@ -156,8 +156,9 @@ function makeBody(o) {
 function circleCircle(A, B) {
   let dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy);
   if (d >= A.r + B.r) return NONE;
-  if (d < 1e-6) { dx = 0; dy = -1; d = 1; }
-  const nx = dx / d, ny = dy / d;
+  if (d < 1e-6) { dx = 0; dy = -1; }
+  else { dx /= d; dy /= d; }
+  const nx = dx, ny = dy;
   return [{ x: A.x + nx * A.r, y: A.y + ny * A.r, nx, ny, sep: d - A.r - B.r, id: 0, Pn: 0, Pt: 0 }];
 }
 
@@ -397,6 +398,42 @@ const LEVELS = [
              P("wood", 21.0, 1.0, 0.9), P("glass", 22.2, 1.0, 0.9), B("wood", 21.6, 1.9, 1.7)],
     foes: [[6.7, 0], [6.7, 1.44], [11.3, 0.65], [12.7, 0.65], [11.6, 2.09],
            [12.0, 3.53], [16.9, 0], [18.8, 0], [21.6, 1.0], [21.6, 2.14]] },
+  { name: "Хрустальная долина", birds: 9, width: 23, power: 1.3,
+    statics: [[12.0, 0, 3.2, 0.65], [21.6, 0, 1.5, 1.0]],
+    blocks: [P("glass", 6.0, 0), P("wood", 7.4, 0), B("wood", 6.7, 1.2, 1.9),
+             P("wood", 6.2, 1.44), P("glass", 7.2, 1.44), B("wood", 6.7, 2.64, 1.5), C("glass", 6.7, 2.88),
+             P("glass", 10.8, 0.65), P("wood", 13.2, 0.65), B("wood", 12.0, 1.85, 2.9),
+             P("wood", 11.1, 2.09), P("glass", 12.9, 2.09), B("wood", 12.0, 3.29, 2.3),
+             P("glass", 11.5, 3.53, 0.9), P("wood", 12.5, 3.53, 0.9), B("wood", 12.0, 4.43, 1.5), C("stone", 12.0, 4.67),
+             P("glass", 16.2, 0), P("wood", 17.6, 0), B("wood", 16.9, 1.2, 1.9), C("glass", 16.9, 1.44),
+             P("wood", 21.0, 1.0, 0.9), P("glass", 22.2, 1.0, 0.9), B("wood", 21.6, 1.9, 1.7)],
+    foes: [[6.7, 0], [6.7, 1.44], [11.3, 0.65], [12.7, 0.65], [11.6, 2.09],
+           [12.0, 3.53], [16.9, 0], [18.8, 0], [21.6, 1.0], [21.6, 2.14]] },
+  { name: "Башни на холмах", birds: 9, width: 22, power: 1.3,
+    statics: [[12.5, 0, 2.6, 1.0], [21.2, 3.5, 1.2, 0.3]],
+    blocks: [P("glass", 6.8, 0), P("wood", 8.2, 0), B("wood", 7.5, 1.2, 1.7),
+             P("wood", 6.9, 1.44), P("glass", 8.1, 1.44), B("wood", 7.5, 2.64, 1.5), C("stone", 7.5, 2.88),
+             P("stone", 11.7, 1.0), P("glass", 13.3, 1.0), B("wood", 12.5, 2.2, 1.9),
+             P("wood", 11.9, 2.44), P("wood", 13.1, 2.44), B("wood", 12.5, 3.64, 1.5),
+             P("glass", 12.1, 3.88, 1.0), P("wood", 12.9, 3.88, 1.0), B("wood", 12.5, 4.88, 1.1), C("glass", 12.5, 5.12),
+             P("wood", 16.2, 0), P("glass", 17.4, 0), P("wood", 18.6, 0), P("stone", 19.8, 0),
+             B("wood", 16.8, 1.2, 1.5), B("wood", 19.2, 1.2, 1.5), B("stone", 18.0, 1.44, 3.9),
+             P("glass", 16.8, 1.68), P("wood", 19.2, 1.68), B("wood", 18.0, 2.88, 3.0), C("glass", 18.0, 3.12)],
+    foes: [[7.5, 0], [7.5, 1.44], [12.5, 1.0], [12.5, 2.44], [12.5, 3.88],
+           [16.8, 0], [19.2, 0], [18.0, 1.68], [21.2, 3.8]] },
+  { name: "Крепость облаков", birds: 10, width: 25, power: 1.3,
+    statics: [[13.0, 0, 4.0, 0.6], [23.2, 0, 0.6, 2.2], [23.2, 2.2, 1.8, 0.3]],
+    blocks: [C("stone", 6.5, 0), C("stone", 6.5, 0.5), C("wood", 6.5, 1.0), C("wood", 6.5, 1.5), B("wood", 6.5, 2.0, 0.9),
+             P("wood", 7.1, 0, 0.9), P("glass", 8.1, 0, 0.9), B("wood", 7.6, 0.9, 1.3),
+             P("stone", 11.3, 0.6), P("glass", 12.4, 0.6), P("wood", 13.6, 0.6), P("stone", 14.7, 0.6),
+             B("stone", 11.85, 1.8, 1.35), B("stone", 14.15, 1.8, 1.35), B("wood", 13.0, 2.04, 3.6),
+             P("wood", 11.6, 2.28), P("glass", 12.6, 2.28), P("wood", 13.4, 2.28), P("glass", 14.4, 2.28),
+             B("wood", 12.1, 3.48, 1.2), B("wood", 13.9, 3.48, 1.2), B("stone", 13.0, 3.72, 3.0),
+             P("glass", 12.4, 3.96), P("wood", 13.6, 3.96), B("wood", 13.0, 5.16, 1.5), C("glass", 13.0, 5.4),
+             C("stone", 16.4, 0), C("glass", 16.4, 0.5), P("wood", 19.6, 0, 0.8), C("glass", 21.0, 0),
+             P("wood", 22.6, 2.5), P("glass", 23.8, 2.5), B("stone", 23.2, 3.7, 1.5)],
+    foes: [[6.5, 2.24], [7.6, 0], [11.85, 0.6], [13.0, 0.6], [14.15, 0.6], [12.1, 2.28], [13.9, 2.28], [13.0, 3.96],
+           [17.0, 0], [20.3, 0], [23.2, 2.5]] },
 ];
 
 // ---------- game logic ----------
@@ -530,27 +567,16 @@ const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const BOT = params.get("bot") || "YooStonkBot";
 
-// The bot's address, the same rule as on the main page: only our own kinds of address are accepted.
+// Exact trusted endpoint. Update this value in both Mini App pages when the tunnel address changes.
+// Neither a query parameter nor a hosting provider's domain proves ownership of an endpoint.
 const DEFAULT_API = "https://posh-cauterize-buffing.ngrok-free.dev";
-const API_HOSTS = [/\.ngrok-free\.(dev|app)$/, /\.ngrok\.(app|io|dev)$/, /\.duckdns\.org$/];
-const API = (() => {
-  try {
-    // The APK serves this exact page beside its API, through the existing HTTPS tunnel.
-    if (location.protocol === "https:" && API_HOSTS.some((re) => re.test(location.hostname))) return location.origin;
-    const u = new URL(params.get("api") || DEFAULT_API);
-    if (u.protocol === "https:" && !u.username && !u.password && API_HOSTS.some((re) => re.test(u.hostname))) return u.origin;
-  } catch (e) { /* not an address: use the default */ }
-  return DEFAULT_API;
-})();
+const API = DEFAULT_API;
 const signed = Boolean(inTelegram && tg.initData);
 const BACK = (() => {
   try {
+    // Only navigate within the page's own origin; never trust an arbitrary return URL.
     const u = new URL(params.get("back") || "index.html", location.href);
-    if (u.protocol === "https:" && !u.username && !u.password) {
-      u.searchParams.set("api", API);
-      return u.href;
-    }
-    if (!inTelegram && u.origin === location.origin && /^https?:$/.test(u.protocol)) return u.href;
+    if (u.origin === location.origin && /^https?:$/.test(u.protocol) && !u.username && !u.password) return u.href;
   } catch (e) { /* Invalid return links never become executable navigation. */ }
   return null;
 })();
@@ -623,11 +649,11 @@ const AUDIO = (() => {
   function play(kind, power = 1) {
     if (!ctx || !on || ctx.state !== "running") return;
     const at = ctx.currentTime;
-    if (kind === "launch") tone(sfx, 520, at, 0.22, 0.5, "sine", 170);
-    else if (kind === "pop") { tone(sfx, 320, at, 0.14, 0.7, "sine", 760); tone(sfx, 900, at + 0.05, 0.1, 0.25, "triangle"); }
-    else if (kind === "break") tone(sfx, power, at, 0.13, 0.5, "square", power * 0.5);
+    if (kind === "launch") { tone(sfx, 520, at, 0.22, 0.4, "sine", 170); tone(sfx, 220, at, 0.09, 0.18, "triangle", 110); }
+    else if (kind === "pop") { tone(sfx, 320, at, 0.14, 0.55, "sine", 760); tone(sfx, 900, at + 0.05, 0.1, 0.2, "triangle"); }
+    else if (kind === "break") { tone(sfx, power, at, 0.13, 0.3, "triangle", power * 0.5); tone(sfx, power * 1.4, at + 0.015, 0.08, 0.12, "sine", power * 0.8); }
     else if (kind === "poof") tone(sfx, 240, at, 0.18, 0.3, "sine", 120);
-    else if (kind === "hit") { if (at - lastHit < 0.07) return; lastHit = at; tone(sfx, 95, at, 0.12, Math.min(0.9, 0.2 + power * 0.07), "triangle", 60); }
+    else if (kind === "hit") { if (at - lastHit < 0.09) return; lastHit = at; tone(sfx, 115, at, 0.12, Math.min(0.6, 0.16 + power * 0.05), "triangle", 60); }
     else if (kind === "win") [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(sfx, f, at + i * 0.12, 0.35, 0.5, "triangle"));
     else if (kind === "lose") [392, 329.63, 261.63].forEach((f, i) => tone(sfx, f, at + i * 0.18, 0.4, 0.4, "sine"));
   }
@@ -733,6 +759,7 @@ function drawBack(t) {
   cx.fillStyle = sky; cx.fillRect(x0, skyTop, viewW, H - skyTop);
   // sun
   cx.save(); cx.translate(x0 + Math.min(viewW - 2.3, 7.7), 2.6);
+  cx.fillStyle = "rgba(255, 255, 255, .22)"; cx.beginPath(); cx.arc(0, 0, 1.8, 0, 7); cx.fill();
   cx.fillStyle = "rgba(255, 255, 255, .35)"; cx.beginPath(); cx.arc(0, 0, 1.5, 0, 7); cx.fill();
   cx.fillStyle = "#fffbe6"; cx.beginPath(); cx.arc(0, 0, 0.95, 0, 7); cx.fill();
   cx.restore();
@@ -783,6 +810,7 @@ function drawBlock(b) {
   cx.fillStyle = fill; cx.strokeStyle = stroke; cx.lineWidth = 0.035;
   rr(-b.hw, -b.hh, b.w, b.h, 0.04); cx.fill(); cx.stroke();
   cx.fillStyle = "rgba(255, 255, 255, .24)"; cx.fillRect(-b.hw + .025, -b.hh + .025, b.w - .05, Math.min(.055, b.h / 4));
+  cx.fillStyle = "rgba(65, 49, 23, .10)"; cx.fillRect(-b.hw + .025, b.hh - Math.min(.055, b.h / 4) - .025, b.w - .05, Math.min(.055, b.h / 4));
   cx.strokeStyle = line; cx.lineWidth = 0.02; cx.beginPath();
   if (b.mat === "glass") { cx.moveTo(-b.hw * 0.5, -b.hh * 0.7); cx.lineTo(b.hw * 0.1, -b.hh * 0.7); }
   else if (b.w > b.h) { cx.moveTo(-b.hw * 0.8, -b.hh * 0.3); cx.lineTo(b.hw * 0.8, -b.hh * 0.3); cx.moveTo(-b.hw * 0.6, b.hh * 0.35); cx.lineTo(b.hw * 0.7, b.hh * 0.35); }
@@ -916,8 +944,10 @@ function draw(t) {
     for (let i = 1; i <= 22; i++) {
       const s = i * 0.065, x = drag.pos.x + drag.vx * s, y = drag.pos.y + drag.vy * s + GRAV * s * s / 2;
       if (y > GROUND || x < 0 || x > game.width) break;
-      cx.fillStyle = `rgba(83, 55, 24, ${.62 * (1 - i / 27)})`;
-      cx.beginPath(); cx.arc(x, y, 0.07 - i * 0.0015, 0, 7); cx.fill();
+      cx.fillStyle = `rgba(255, 252, 222, ${.88 * (1 - i / 29)})`;
+      cx.strokeStyle = `rgba(83, 55, 24, ${.68 * (1 - i / 29)})`;
+      cx.lineWidth = 0.025;
+      cx.beginPath(); cx.arc(x, y, 0.075 - i * 0.0015, 0, 7); cx.fill(); cx.stroke();
     }
   }
 
@@ -1028,12 +1058,12 @@ function doneCount() {
 function unlocked() { return Math.min(LEVELS.length, doneCount() + 1); }
 
 function rewardLine() {
-  if (!signed) return "🎟 Билеты за прохождение начисляются, если открыть игру из бота. Сейчас можно играть просто так.";
+  if (!signed) return "🎟 За прохождение всех уровней дают <b>+5 билетов</b>, если открыть игру из бота. Сейчас можно играть просто так.";
   if (!server) return "Не получилось связаться с ботом — пока играй просто так.";
-  if (!server.giveaway) return "Сейчас розыгрыша нет — играй ради удовольствия. Начнётся новый — за прохождение всех уровней дадут <b>+3 билета</b>.";
-  if (server.claimed) return "✅ <b>+3 билета</b> за этот розыгрыш ты уже получил. Играй просто так!";
-  if (!server.joined) return "🎟 За прохождение всех уровней дают <b>+3 билета</b>, но ты ещё не участвуешь в розыгрыше. Нажми в боте «🎁 Розыгрыш» → «Участвовать».";
-  return `🎟 Пройди все ${LEVELS.length} уровней — получишь <b>+3 билета</b> в розыгрыше!`;
+  if (!server.giveaway) return "Сейчас розыгрыша нет — играй ради удовольствия. Начнётся новый — за прохождение всех уровней дадут <b>+5 билетов</b>.";
+  if (server.claimed) return "✅ Билеты за этот розыгрыш ты уже получил. Играй просто так!";
+  if (!server.joined) return "🎟 За прохождение всех уровней дают <b>+5 билетов</b>, но ты ещё не участвуешь в розыгрыше. Нажми в боте «🎁 Розыгрыш» → «Участвовать».";
+  return `🎟 Пройди все ${LEVELS.length} уровней — получишь <b>+5 билетов</b> в розыгрыше!`;
 }
 
 function show(html) { $("card").innerHTML = html; $("modal").classList.remove("hidden"); paused = true; }
@@ -1053,7 +1083,7 @@ function welcome() {
       <li>Вредина лопается от <b>прямого попадания</b>, упавшего блока или падения с высоты.</li>
       <li><b>Стекло</b> и <b>дерево</b> ломаются, <b>камень</b> почти нет — его надо ронять.</li>
       <li>Цыплят мало. Не хватило — уровень заново.</li>
-      <li><b>Уровни 4–6 большие и горизонтальные:</b> поверни телефон боком — весь уровень будет на экране. Ползунок <b>🔍 Масштаб</b> вверху приближает и отдаляет. Рогатку можно тянуть из любого места экрана, а если приблизил так, что уровень не влез, — тяни от цыплёнка и води пальцем по экрану, чтобы осмотреться.</li>
+      <li><b>Уровни 4–9 большие и горизонтальные:</b> поверни телефон боком — весь уровень будет на экране. Ползунок <b>🔍 Масштаб</b> вверху приближает и отдаляет. Рогатку можно тянуть из любого места экрана, а если приблизил так, что уровень не влез, — тяни от цыплёнка и води пальцем по экрану, чтобы осмотреться.</li>
     </ol></details>
     <div class="reward">${rewardLine()}</div>
     <div class="levels">${LEVELS.map((L, i) => `<button type="button" data-i="${i}" ${i < open ? "" : "disabled"}>${i < open ? (i < doneCount() ? "✓ " : "") : "🔒 "}${i + 1}. ${L.name}<small>🐥 ${L.birds} · 😈 ${L.foes.length}</small></button>`).join("")}</div>
@@ -1104,11 +1134,11 @@ async function onWin() {
   let text;
   if (!signed) text = "Билеты начисляются, только если открыть игру из бота. Но ты молодец 😎";
   else if (!r) text = "Не получилось связаться с ботом. Открой игру ещё раз позже: если розыгрыш идёт, билеты начислятся.";
-  else if (r.reward) text = `🎟 <b>+${Number(r.reward) || 0} билета</b> начислены! Теперь у тебя <b>${Number(r.tickets) || 0}</b>.`;   // numbers only: the answer goes into HTML
-  else if (!r.giveaway) text = "Сейчас розыгрыша нет, так что это было ради удовольствия 😎 Начнётся новый — пройди игру и получи <b>+3 билета</b>.";
+  else if (r.reward) text = `🎟 <b>+${Number(r.reward) || 0} билетов</b> начислены! Теперь у тебя <b>${Number(r.tickets) || 0}</b>.`;   // numbers only: the answer goes into HTML
+  else if (!r.giveaway) text = "Сейчас розыгрыша нет, так что это было ради удовольствия 😎 Начнётся новый — пройди игру и получи <b>+5 билетов</b>.";
   else if (r.claimed) text = "✅ Билеты за этот розыгрыш ты уже получил. Это было просто красиво!";
   else if (r.done < LEVELS.length) text = "Бот засчитывает уровни, пройденные по порядку в текущем розыгрыше. Начни с первого открытого уровня — и билеты твои.";
-  else text = "Чтобы забрать <b>+3 билета</b>, прими участие в розыгрыше: в боте «🎁 Розыгрыш» → «Участвовать». Потом открой игру — проходить заново не придётся.";
+  else text = "Чтобы забрать <b>+5 билетов</b>, прими участие в розыгрыше: в боте «🎁 Розыгрыш» → «Участвовать». Потом открой игру — проходить заново не придётся.";
   if ($("prize")) $("prize").innerHTML = text;
 }
 
