@@ -141,20 +141,27 @@
                text-decoration: none; }
   #game-link.hidden { display: none; }
   .game-link span { display: block; font-weight: 500; font-size: 12px; opacity: .8; }
-  .assault-card { margin: -4px 0 16px; padding: 15px; border: 1px solid #5d718d; border-radius: 14px;
-                  background: linear-gradient(135deg, #172b47, #101e33); box-shadow: inset 0 1px #ffffff12, 0 8px 20px #0002; }
-  .assault-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-  .assault-title { color: #fff1bd; font-size: 17px; font-weight: 800; }
-  .assault-count { color: #c8ddff; font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .assault-bar { height: 8px; margin: 10px 0; overflow: hidden; border-radius: 999px; background: #071221; }
-  .assault-fill { width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #ffc84f, #ff9e45); transition: width .35s ease; }
-  .assault-start, .assault-copy, .assault-result { font-size: 13px; line-height: 1.45; }
-  .assault-start { color: #9db5d6; }
-  .assault-copy { margin-top: 7px; color: #d9e5f4; }
-  .assault-result { margin-top: 7px; color: #fff1bd; font-weight: 700; }
-  #assault-play { display: block; width: 100%; margin-top: 12px; padding: 11px 12px; border: 1px solid #8099bb; border-radius: 10px;
-                  background: #243e5e; color: #f5f8ff; font: 750 14px/1.2 -apple-system, "Segoe UI", Roboto, sans-serif; text-align: center; text-decoration: none; }
-  #assault-play:focus-visible, #assault-spin:focus-visible { outline: 2px solid #fff1b0; outline-offset: 3px; }
+  .assault-card { margin: 0 0 16px; padding: 14px; border: 1px solid #79633d; border-left: 3px solid #ffc84f; border-radius: 12px;
+                  background: #17263b; }
+  .assault-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .assault-title { color: #fff1bd; font-size: 16px; font-weight: 800; }
+  .assault-count { color: #fff1bd; font-size: 19px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .assault-bar { height: 6px; margin: 9px 0; overflow: hidden; border-radius: 999px; background: #071221; }
+  .assault-fill { width: 0; height: 100%; border-radius: inherit; background: #ffc84f; transition: width .35s ease; }
+  .assault-start, .assault-copy, .assault-result, .assault-goal { font-size: 12px; line-height: 1.45; }
+  .assault-start { color: #b8c9df; }
+  .assault-goal { color: #d9e5f4; }
+  .assault-copy { margin-top: 5px; color: #b8c9df; }
+  .assault-result { margin-top: 5px; color: #fff1bd; font-weight: 600; }
+  .assault-actions { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+  .assault-rules { flex: 1; min-width: 0; }
+  .assault-rules summary { min-height: 44px; display: flex; align-items: center; color: #c8d9ef; font-size: 12px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+  .assault-rules[open] { flex-basis: 100%; }
+  .assault-actions:has(.assault-rules[open]) { flex-wrap: wrap; }
+  #assault-play { display: block; flex: 1; min-height: 44px; padding: 13px 12px; border: 1px solid #ffe27a; border-radius: 9px;
+                  background: #f7c531; color: #241c08; font: 750 14px/1.2 -apple-system, "Segoe UI", Roboto, sans-serif; text-align: center; text-decoration: none; }
+  #assault-play:focus-visible, #assault-spin:focus-visible, .assault-rules summary:focus-visible { outline: 2px solid #fff1b0; outline-offset: 3px; }
+  @media (prefers-reduced-motion: reduce) { .assault-fill { transition: none; } }
   #assault-spin { width: 100%; margin-top: 10px; padding: 11px 12px; border: 1px solid #ffe27a; border-radius: 10px;
                   background: #f7c531; color: #241c08; font: 800 14px/1.2 -apple-system, "Segoe UI", Roboto, sans-serif; }
   #assault-spin:disabled { border-color: #526171; background: #35404d; color: #c0c9d3; cursor: wait; }
@@ -611,6 +618,20 @@
       <h1>🎯 Билеты и шансы</h1>
       <div class="sub">Выполняй задания, собирай билеты.<br>Больше билетов — выше шанс в розыгрыше.</div>
     </header>
+    <section id="assault-card" class="assault-card hidden" aria-label="Общий штурм Цыпа-бум" aria-live="polite">
+      <div class="assault-head"><div class="assault-title">Штурм Цыпа-бум</div><div class="assault-count" id="assault-count">0 из 30</div></div>
+      <div class="assault-bar" aria-hidden="true"><div class="assault-fill" id="assault-fill"></div></div>
+      <div class="assault-goal" id="assault-goal">30 участников пройдут игру — откроются награды.</div>
+      <div class="assault-result hidden" id="assault-result"></div>
+      <div class="assault-actions">
+        <details class="assault-rules">
+          <summary>Условия и награды</summary>
+          <div class="assault-start" id="assault-start"></div>
+          <div class="assault-copy" id="assault-copy"></div>
+        </details>
+        <a id="assault-play" href="game.html?mode=assault">Играть в штурм</a>
+      </div>
+    </section>
     <div id="progress-loading" class="p-empty">Загружаем твой прогресс…</div>
     <div id="progress-offline" class="p-empty hidden"></div>
     <div id="progress-content" class="hidden">
@@ -655,14 +676,6 @@
 
   <!-- The slingshot game lives on its own page (game.html); the query goes along so it keeps the bot's address. -->
   <a id="game-link" class="game-link" href="game.html">🐥 Играть в «Цыпа-бум» <span>+5 билетов за прохождение</span></a>
-  <section id="assault-card" class="assault-card hidden" aria-live="polite">
-    <div class="assault-head"><div class="assault-title">Штурм Цыпа-бум</div><div class="assault-count" id="assault-count">0 из 30</div></div>
-    <div class="assault-bar" aria-hidden="true"><div class="assault-fill" id="assault-fill"></div></div>
-    <div class="assault-start" id="assault-start"></div>
-    <div class="assault-copy" id="assault-copy"></div>
-    <div class="assault-result hidden" id="assault-result"></div>
-    <a id="assault-play" href="game.html?mode=assault">Играть в штурм</a>
-  </section>
 
   <section id="tab-case" class="hidden">
     <header class="section-heading case-heading">
@@ -1846,10 +1859,13 @@
       start.textContent = status === "scheduled" ? (date ? `Старт: ${date}` : "Старт скоро")
         : status === "active" ? (date ? `Штурм начался: ${date}` : "Штурм идёт") : "Штурм завершён";
       copy.textContent = `После ${goal} финишей первые 3 получат по 2 дополнительных открытия. Каждому финишировавшему — +1 билет в текущем розыгрыше при выполнении условий допуска. Один аккаунт засчитывается один раз. Места определяет порядок подтверждения сервером. Штурм действует до завершения текущего розыгрыша.`;
+      $("assault-goal").textContent = status === "closed" ? "Общая цель достигнута. Штурм завершён."
+        : `${goal} участников пройдут 9 уровней — финишировавшим +1 билет.`;
+      $("assault-play").textContent = status === "scheduled" ? "Когда старт?" : status === "closed" ? "Итоги штурма" : place ? "Моё место" : done > 0 ? "Продолжить штурм" : "Играть в штурм";
       result.classList.toggle("hidden", status === "scheduled");
       if (status === "active") result.textContent = place
-        ? `Место ${place} закреплено. Ждём общей цели.`
-        : `Пройдено уровней: ${done} из 9.` + (finished >= 3 ? " Призовые места заняты. Помоги команде открыть награды!" : "");
+        ? `Твоё место: ${place}. Ждём ${goal} финишей.`
+        : `Твой прогресс: ${done}/9.` + (finished >= 3 ? " Места 1–3 уже заняты." : " Первым трём — по 2 открытия кейса.");
       if (status === "closed" && place) result.textContent = place <= 3
         ? `Твоё место: ${place}. Призовые открытия доступны на вкладке «Кейс» при выполнении условий допуска.`
         : `Твоё место: ${place}. Общая цель достигнута, дополнительный билет начисляется при выполнении условий допуска.`;
