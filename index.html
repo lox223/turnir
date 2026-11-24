@@ -171,50 +171,70 @@
   #spin:disabled { opacity: .6; }
   #take { margin-top: 12px; width: 100%; padding: 13px; border: 0; border-radius: 12px; background: #4b69ff;
           color: #fff; font-size: 16px; font-weight: 700; }
-  .roll { position: relative; overflow: hidden; border-radius: 14px; background: linear-gradient(180deg, #302d3e, #201f2a 34%, #24222e);
-          padding: 12px 0; margin-bottom: 12px; border: 1px solid rgba(255, 224, 138, .16);
-          box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .035), inset 0 16px 28px rgba(255, 231, 161, .05),
-                      inset 0 -18px 30px rgba(0, 0, 0, .38), 0 8px 22px rgba(0, 0, 0, .18); }
-  .roll.spinning { box-shadow: inset 0 0 0 1px rgba(255, 223, 135, .32), inset 0 16px 28px rgba(255, 231, 161, .1),
-                   inset 0 -18px 30px rgba(0, 0, 0, .42), 0 0 24px rgba(245, 184, 55, .18); }
-  .roll.slowing { border-color: rgba(255, 190, 74, .6); box-shadow: inset 0 0 30px rgba(255, 129, 25, .2),
-                  inset 0 0 0 1px rgba(255, 231, 161, .22), 0 0 30px rgba(255, 139, 31, .22); }
-  .roll::before, .roll::after { content: ""; position: absolute; top: 0; bottom: 0; width: 56px; z-index: 2;
+  .roll { --roll-speed: 0; --roll-progress: 0; --win-color: #ffd43b; position: relative; isolation: isolate; overflow: hidden;
+          border-radius: 16px; background: radial-gradient(ellipse at 50% 0, #393447, #201f2a 60%, #171822);
+          padding: 17px 0 38px; margin-bottom: 12px; border: 1px solid #63543a;
+          box-shadow: inset 0 1px 0 #fff1b01c, inset 0 -20px 30px #0005, 0 10px 24px #0003; }
+  .roll.spinning { border-color: #b28c39; }
+  .roll.slowing { border-color: #ffd43b; }
+  .roll.done { border-color: var(--win-color); box-shadow: inset 0 1px 0 #fff1b02b, 0 10px 24px #0003; }
+  .roll::before, .roll::after { content: ""; position: absolute; top: 0; bottom: 30px; width: 46px; z-index: 2;
                                 pointer-events: none; }
-  .roll::before { left: 0; background: linear-gradient(90deg, #24222e, transparent); }
-  .roll::after { right: 0; background: linear-gradient(-90deg, #24222e, transparent); }
-  .roll-track { display: flex; gap: 8px; will-change: transform; }
-  .roll .item { flex: 0 0 110px; padding: 0 6px 6px; border-radius: 10px; }
+  .roll::before { left: 0; background: linear-gradient(90deg, #201f2a, #201f2a00); }
+  .roll::after { right: 0; background: linear-gradient(-90deg, #201f2a, #201f2a00); }
+  .roll-energy { position: absolute; inset: 0 0 30px; z-index: -1; pointer-events: none;
+                 background: radial-gradient(ellipse at 50% 50%, #ffd43b30, transparent 70%);
+                 opacity: var(--roll-speed); }
+  .roll-energy::after { content: ""; position: absolute; inset: 8px -50%;
+                       background: repeating-linear-gradient(174deg, transparent 0 19px, #fff1b014 20px, transparent 21px 38px);
+                       transform: translateX(calc(var(--roll-progress) * -70px)); }
+  .roll-track { display: flex; gap: 8px; }
+  .roll.spinning .roll-track { will-change: transform; }
+  .roll .item { flex: 0 0 110px; padding: 0 6px 6px; border-radius: 10px;
+                transition: opacity .25s, background-color .2s; }
   .roll .item-price { font-size: 14px; }
   .roll .item-wear { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .roll .item { transition: opacity .5s; }
-  .roll .item.win { z-index: 1; box-shadow: 0 0 0 2px #ffd45a inset, 0 0 20px rgba(255, 200, 70, .75);
-                    animation: winPulse 1s ease-in-out 3; }
-  .roll.done .item:not(.win) { opacity: .38; }
-  @keyframes winPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.07); } }
+  .roll.spinning .item.focus { background-color: #454052; }
+  .roll .item.win { z-index: 1; background: #3d3541; box-shadow: 0 0 0 2px #ffe28a inset, 0 0 28px #ffd43b55;
+                    animation: winPulse .65s cubic-bezier(.2, .8, .25, 1) both; }
+  .roll .item.win::before { opacity: .5; }
+  .roll .item.win img, .roll .item.win svg { animation: winLift .7s cubic-bezier(.16, 1, .3, 1) both; }
+  .roll.done .item:not(.win) { opacity: .32; }
+  @keyframes winPulse { 0% { transform: scale(.98); } 45% { transform: scale(1.065); } 100% { transform: scale(1.025); } }
+  @keyframes winLift { from { transform: translateY(4px) scale(.94); } to { transform: translateY(-2px) scale(1.04); } }
   /* the line the strip stops under, with a little arrow at both ends */
-  .roll-marker { position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; margin-left: -1px; z-index: 3;
-                 pointer-events: none; transform-origin: 50% 50%;
-                 background: linear-gradient(180deg, #fff0ad, #e4ae39 50%, #fff0ad);
-                 box-shadow: 0 0 12px rgba(255, 200, 70, .85); }
-  .roll.spinning .roll-marker { animation: rollMarker .42s ease-in-out infinite alternate; }
-  .roll.slowing .roll-marker { animation-duration: .18s; box-shadow: 0 0 28px rgba(255, 130, 33, .98), 0 0 58px rgba(255, 204, 92, .38); }
-  @keyframes rollMarker { from { opacity: .72; transform: scaleY(.92); box-shadow: 0 0 8px rgba(255, 200, 70, .52); }
-                            to { opacity: 1; transform: scaleY(1.04); box-shadow: 0 0 21px rgba(255, 214, 102, .96); } }
+  .roll-marker { position: absolute; top: 0; bottom: 31px; left: 50%; width: 2px; margin-left: -1px; z-index: 3;
+                 pointer-events: none; background: linear-gradient(180deg, #fff1b0, #ffd43b33 35% 65%, #fff1b0);
+                 box-shadow: 0 0 14px #ffd43b66; }
+  .roll.spinning .roll-marker { box-shadow: 0 0 18px #ffd43b88, 0 0 38px #ffd43b22; }
+  .roll.slowing .roll-marker, .roll.done .roll-marker { box-shadow: 0 0 21px #ffd43baa; }
   .roll-marker::before, .roll-marker::after { content: ""; position: absolute; left: 50%; margin-left: -7px;
                                               border: 7px solid transparent; }
-  .roll-marker::before { top: 0; border-top-color: #ffd45a; border-bottom-width: 0; }
-  .roll-marker::after { bottom: 0; border-bottom-color: #ffd45a; border-top-width: 0; }
+  .roll-marker::before { top: 0; border-top-color: #ffe28a; border-bottom-width: 0; }
+  .roll-marker::after { bottom: 0; border-bottom-color: #ffe28a; border-top-width: 0; }
+  .roll-caption { position: absolute; bottom: 0; left: 12px; right: 12px; height: 30px; display: flex; gap: 10px;
+                  align-items: center; justify-content: space-between; border-top: 1px solid #fff1b014; }
+  .roll-status { color: #c4becf; font-size: 11px; line-height: 1.2; }
+  .roll.done .roll-status { color: #ffe6a0; }
+  .roll-meter { width: 64px; height: 3px; flex: none; overflow: hidden; border-radius: 3px; background: #fff1b01a; }
+  .roll-meter::after { content: ""; display: block; height: 100%; background: #ffd43b; transform-origin: left;
+                       transform: scaleX(var(--roll-progress)); }
   #fx { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
   #tab-case { position: relative; }
   .snd { position: absolute; right: 0; top: 0; width: 38px; height: 38px; border: 0; border-radius: 50%; z-index: 5;
          background: var(--card); color: var(--text); font-size: 18px; line-height: 1; cursor: pointer; }
   .snd:active { transform: scale(.94); }
+  .snd:focus-visible { outline: 2px solid #ffd43b; outline-offset: 3px; }
   @media (prefers-reduced-motion: reduce) {
-    .item.top::after, .roll .item.win, .roll.spinning .roll-marker, .progress-hero.music::before { animation: none; }
+    .item.top::after, .roll .item.win, .roll .item.win img, .roll .item.win svg, .result.revealed,
+    .progress-hero.music::before { animation: none; }
+    .roll-energy { display: none; }
+    .roll .item { transition: none; }
   }
   .result { text-align: center; background: var(--card); border-radius: 14px; padding: 14px; margin-bottom: 12px;
             font-size: 15px; }
+  .result.revealed { animation: resultReveal .35s ease-out both; }
+  @keyframes resultReveal { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
   .result b { color: var(--accent); font-size: 18px; }
   /* Sharing is optional; PNG is made locally and hosted briefly only after a download tap. */
   .share-win { width: 100%; min-height: 48px; margin: 0 0 12px; padding: 12px 16px; border: 1px solid #ffd43b;
@@ -618,8 +638,13 @@
       <div class="feed-head"><span class="live-dot"></span><span>Live · последние дропы</span></div>
       <div class="feed-track" id="feed-track" tabindex="0" role="region" aria-label="Последние выпадения — прокручиваемая лента"></div>
     </div>
-    <div class="roll" id="roll"><div class="roll-marker"></div><div class="roll-track" id="track"></div></div>
-    <div class="result hidden" id="result"></div>
+    <div class="roll" id="roll" aria-label="Прокрутка бесплатного кейса" aria-busy="false">
+      <div class="roll-energy" aria-hidden="true"></div>
+      <div class="roll-marker" aria-hidden="true"></div>
+      <div class="roll-track" id="track" aria-hidden="true"></div>
+      <div class="roll-caption"><span class="roll-status" id="roll-status" role="status">Твой следующий дроп</span><span class="roll-meter" aria-hidden="true"></span></div>
+    </div>
+    <div class="result hidden" id="result" role="status" aria-atomic="true"></div>
     <button type="button" class="share-win hidden" id="share-win">Поделиться выигрышем</button>
     <button type="button" id="spin">🎰 Крутить бесплатно</button>
     <div class="note" id="spin-note">Нажми — бот откроет кейс и пришлёт кнопку «🎰 Смотреть прокрутку».</div>
@@ -834,7 +859,7 @@
       ${chance ? `<span class="item-chance">${it.chance}%</span>` : ""}
       ${it.img ? `<img src="${it.img}?v=3" alt="" width="156" height="114" decoding="async" draggable="false">` : TICKET}
       <div class="item-wear">${chance && !it.img ? "В розыгрыш" : it.wear}</div>
-      <div class="item-price">${chance && !it.img ? "+3 билета" : it.price}</div>
+      <div class="item-price">${!it.img ? "+3 билета" : it.price}</div>
     </div>`;
   $("items").innerHTML = ITEMS.map((it) => card(it)).join("");
   ITEMS.forEach((it) => { if (it.img) new Image().src = it.img + "?v=3"; });
@@ -1145,7 +1170,10 @@
     $("track").style.transform = `translateX(${-x}px)`;
   }
   fillStrip(null);
-  requestAnimationFrame(() => slideTo(3, 0));
+  requestAnimationFrame(() => {
+    // A hash replay can finish while the first frame is deferred (for example behind the splash).
+    if (!$("roll").classList.contains("spinning") && !$("roll").classList.contains("done")) slideTo(3, 0);
+  });
 
   // ---- Win effects: a crisp spark burst, then dimensional ruble coins falling and bouncing on the floor. ----
   const FX = (() => {
@@ -1164,6 +1192,7 @@
     resize();
 
     function spark(x, y, colors, power = 1) {
+      if (parts.length >= 160) return;
       const a = rnd(0, Math.PI * 2), v = rnd(180, 560) * power;
       parts.push({ k: "spark", x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - rnd(80, 250),
                    life: 0, max: rnd(.48, .98), size: rnd(1.4, 3.5), color: colors[(Math.random() * colors.length) | 0] });
@@ -1213,6 +1242,10 @@
     }
 
     function frame(t) {
+      if (document.hidden || $("tab-case").classList.contains("hidden")) {
+        run++; timers.forEach(clearTimeout); timers = [];
+        parts = []; rings = []; raf = 0; ctx.clearRect(0, 0, W, H); return;
+      }
       const dt = Math.min(.05, (t - last) / 1000 || .016);
       last = t;
       ctx.clearRect(0, 0, W, H);
@@ -1283,15 +1316,21 @@
         timers.forEach(clearTimeout); timers = [];
         parts = []; rings = []; ctx.clearRect(0, 0, W, H);
       },
+      trail(x, y, strength) {
+        if (reduce || document.hidden || $("tab-case").classList.contains("hidden")) return;
+        const colors = ["#fff1b0", "#ffd43b", "#bcecff"];
+        for (let i = 0; i < (strength > .5 ? 2 : 1); i++) spark(x, y, colors, .2 + strength * .18);
+        kick();
+      },
       win(x, y, color, tier) {
         if (document.hidden || $("tab-case").classList.contains("hidden")) return;
         this.clear();
         const token = run;
-        const gold = ["#fff7db", "#fff1b0", "#e7ad36", "#bcecff"];
-        const sparks = Math.round([24, 34, 44, 56, 66, 80][tier] * (reduce ? .3 : 1));
-        for (let i = 0; i < sparks; i++) spark(x, y, gold, reduce ? .3 : .65 + tier * .05);
+        const gold = ["#fff7db", "#fff1b0", "#e7ad36", color || "#bcecff"];
+        const sparks = Math.round([16, 38, 48, 60, 72, 92][tier] * (reduce ? .2 : 1));
+        for (let i = 0; i < sparks; i++) spark(x, y, gold, reduce ? .2 : .55 + tier * .08);
         if (!reduce) {
-          ring(x, y, "#fff1b0");
+          if (tier > 0) { ring(x, y, color || "#fff1b0"); ring(x, y, "#fff1b0", .1); }
           for (let i = 0; i < [0, 20, 24, 28, 34, 40][tier]; i++) coin(rnd(.05, .95));
           if (tier >= 3) schedule(token, () => {
             for (let i = 0; i < 18; i++) spark(x, y, gold, .55);
@@ -1303,24 +1342,6 @@
     };
   })();
 
-  // Light haptic "ticks" while the strip slides: one every time a new card passes under the line.
-  let tickRaf = 0;
-  function tickWhileSliding(ms) {
-    if (!inTelegram || !tg.HapticFeedback || !window.DOMMatrixReadOnly) return;
-    cancelAnimationFrame(tickRaf);
-    const track = $("track"), end = performance.now() + ms;
-    let lastIdx = -1, lastAt = 0;
-    const loop = (now) => {
-      const tx = new DOMMatrixReadOnly(getComputedStyle(track).transform).m41;
-      const idx = Math.floor(($("roll").clientWidth / 2 - tx) / CARD_W);
-      if (idx !== lastIdx) {
-        if (lastIdx !== -1 && now - lastAt > 70) { tg.HapticFeedback.selectionChanged(); lastAt = now; }
-        lastIdx = idx;
-      }
-      if (now < end) tickRaf = requestAnimationFrame(loop);
-    };
-    tickRaf = requestAnimationFrame(loop);
-  }
   const TIER = { tickets: 0, s167: 1, s500: 2, s833: 3, s1249: 4, ak: 5 };
 
   // ---- Sounds: studio-made one-shots played through Web Audio so they stay locked to the strip. ----
@@ -1396,133 +1417,232 @@
     document.addEventListener("pointerdown", unlock, { once: true, passive: true });
     // rig: the audio context and its output while sound is on and unlocked (null otherwise): the shake sounds are synthesised on it
     const rig = () => (on && unlocked && ctx && ctx.state === "running" ? { ctx, out: gain } : null);
-    let noiseBuf = null, lastCoin = -1, coinUntil = [], caseRollRaf = 0;
+    let noiseBuf = null, lastCoin = -1, coinUntil = [], caseBus = null;
     const caseVoices = new Set();
+    // A separate, mono case bus tames transient peaks without changing LIVE or shake sounds.
+    function caseRig() {
+      const r = rig();
+      if (!r || document.hidden || $("tab-case").classList.contains("hidden")) return null;
+      if (!caseBus) {
+        const c = r.ctx, bus = c.createGain(), filter = c.createBiquadFilter(), limiter = c.createDynamicsCompressor();
+        filter.type = "lowpass"; filter.frequency.value = 3400; filter.Q.value = .55;
+        limiter.threshold.value = -18; limiter.knee.value = 18; limiter.ratio.value = 6;
+        limiter.attack.value = .004; limiter.release.value = .12;
+        bus.connect(filter); filter.connect(limiter); limiter.connect(r.out);
+        caseBus = bus;
+      }
+      caseBus.gain.cancelScheduledValues(r.ctx.currentTime);
+      caseBus.gain.setValueAtTime(.86, r.ctx.currentTime);
+      return { ctx: r.ctx, out: caseBus };
+    }
+    function voice(source, nodes, start, end) {
+      caseVoices.add(source);
+      source.onended = () => { caseVoices.delete(source); source.disconnect(); nodes.forEach((n) => n.disconnect()); };
+      source.start(start); source.stop(end);
+    }
     function caseTone(freq, peak, duration, delay = 0, end = freq, type = "sine") {
-      const r = rig(); if (!r || document.hidden) return;
+      const r = caseRig(); if (!r || caseVoices.size >= 40) return;
       const c = r.ctx, t = c.currentTime + delay, o = c.createOscillator(), g = c.createGain();
       o.type = type; o.frequency.setValueAtTime(freq, t);
       o.frequency.exponentialRampToValueAtTime(end, t + duration);
       g.gain.setValueAtTime(.0001, t);
-      g.gain.exponentialRampToValueAtTime(peak, t + .003);
+      g.gain.exponentialRampToValueAtTime(peak, t + Math.min(.012, duration * .12));
       g.gain.exponentialRampToValueAtTime(.0001, t + duration);
-      o.connect(g); g.connect(r.out); caseVoices.add(o);
-      o.onended = () => { caseVoices.delete(o); o.disconnect(); g.disconnect(); };
-      o.start(t); o.stop(t + duration + .015);
+      o.connect(g); g.connect(r.out);
+      voice(o, [g], t, t + duration + .015);
     }
-    function caseHiss() {
-      const r = rig(); if (!r || document.hidden) return;
-      const c = r.ctx, t = c.currentTime;
+    function caseNoise(peak, duration, from, to, delay = 0) {
+      const r = caseRig(); if (!r || caseVoices.size >= 40) return;
+      const c = r.ctx, t = c.currentTime + delay;
       if (!noiseBuf) {
-        noiseBuf = c.createBuffer(1, Math.ceil(c.sampleRate * .24), c.sampleRate);
+        noiseBuf = c.createBuffer(1, Math.ceil(c.sampleRate * .8), c.sampleRate);
         const d = noiseBuf.getChannelData(0);
         for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
       }
       const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
-      s.buffer = noiseBuf; f.type = "lowpass"; f.Q.value = .5;
-      f.frequency.setValueAtTime(850, t); f.frequency.exponentialRampToValueAtTime(420, t + .16);
-      g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.025, t + .018);
-      g.gain.exponentialRampToValueAtTime(.0001, t + .17);
-      s.connect(f); f.connect(g); g.connect(r.out); caseVoices.add(s);
-      s.onended = () => { caseVoices.delete(s); s.disconnect(); f.disconnect(); g.disconnect(); };
-      s.start(t); s.stop(t + .24);
+      s.buffer = noiseBuf; f.type = "bandpass"; f.Q.value = .65;
+      f.frequency.setValueAtTime(from, t); f.frequency.exponentialRampToValueAtTime(to, t + duration);
+      g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + Math.min(.025, duration * .2));
+      g.gain.exponentialRampToValueAtTime(.0001, t + duration);
+      s.connect(f); f.connect(g); g.connect(r.out);
+      voice(s, [f, g], t, t + duration + .015);
     }
-    function stopCaseRoll() {
-      cancelAnimationFrame(caseRollRaf); caseRollRaf = 0;
-    }
-    // Each passing card clicks the ratchet; the slowing strip naturally spaces the clicks farther apart.
-    function caseRoll(ms = 6500) {
-      stopCaseRoll();
-      const start = performance.now(), end = start + ms;
-      let lastIndex = null, lastAt = -Infinity;
-      function tick(now) {
-        if (now >= end || !rig() || document.hidden || $("tab-case").classList.contains("hidden")) {
-          caseRollRaf = 0; return;
-        }
-        const box = $("roll").getBoundingClientRect();
-        const index = Math.floor((box.left + box.width / 2 - $("track").getBoundingClientRect().left) / CARD_W);
-        if (lastIndex !== null && index !== lastIndex && now - lastAt >= 32) {
-          const p = Math.min(1, Math.max(0, (now - start) / ms));
-          const f = 1050 + (1 - p) * 650 + Math.random() * 45;
-          const v = .025 + p * .022;
-          caseTone(f, v, .018 + p * .025, 0, f * .55, "triangle");
-          caseTone(f * 2.37, v * .28, .035 + p * .025);
-          caseTone(240, v * .5, .045, 0, 115);
-          lastAt = now;
-        }
-        lastIndex = index;
-        caseRollRaf = requestAnimationFrame(tick);
-      }
-      caseRollRaf = requestAnimationFrame(tick);
+    // The animation owns the clock: one mechanical click per crossing, not a prerecorded rhythm.
+    function caseTick(progress = 0) {
+      const p = Math.min(1, Math.max(0, progress)), f = 900 - p * 300 + Math.random() * 35;
+      const v = .045 + p * .025;
+      caseTone(f, v, .028 + p * .022, 0, f * .55, "triangle");
+      caseTone(185, v * .9, .052, 0, 95);
+      caseNoise(v * .85, .026, 1500, 650);
     }
     function clearCase() {
-      stopCaseRoll();
-      for (const s of caseVoices) { try { s.stop(); } catch (e) { /* already stopped */ } }
+      const t = ctx ? ctx.currentTime : 0;
+      if (caseBus) {
+        caseBus.gain.cancelScheduledValues(t);
+        caseBus.gain.setValueAtTime(caseBus.gain.value, t);
+        caseBus.gain.linearRampToValueAtTime(.0001, t + .02);
+      }
+      for (const s of caseVoices) { try { s.stop(t + .025); } catch (e) { /* already stopped */ } }
       caseVoices.clear(); coinUntil = []; lastCoin = -1;
     }
-    // Soft, short sine tones replace the bright one-shots only for the everyday case.
+    // Warm impact, air and a low wooden latch; no piercing bells in the everyday case.
     function caseOpen() {
-      caseHiss();
-      caseTone(260, .035, .10, 0, 160);
-      caseTone(110, .022, .14, .018, 85);
+      caseNoise(.11, .32, 600, 1800);
+      caseTone(155, .12, .25, 0, 65);
+      caseTone(360, .052, .075, .025, 190, "triangle");
+      caseNoise(.065, .13, 1600, 500, .07);
     }
     function caseWin(code, hasSkin) {
-      stopCaseRoll();
-      if (document.hidden || $("tab-case").classList.contains("hidden")) return;
       if (!hasSkin) {
-        caseTone(260, .025, .14);
-        caseTone(340, .018, .17, .055);
+        caseTone(220, .045, .22, 0, 196);
+        caseTone(329.63, .035, .28, .065);
+        caseNoise(.03, .13, 950, 450);
         return;
       }
+      caseTone(130.81, .12, .42, 0, 65.41);
+      caseNoise(.085, .24, 1400, 420);
       const notes = code === "ak" ? [261.63, 329.63, 392, 523.25] : [261.63, 329.63, 392];
-      notes.forEach((f, i) => caseTone(f, .024, code === "ak" ? .28 : .22, i * .04));
+      notes.forEach((f, i) => {
+        caseTone(f, .046, .48, .045 + i * .055);
+        caseTone(f / 2, .018, .55, .055 + i * .055, f / 2, "triangle");
+      });
     }
     function coinHit(force, bounce = 0) {
-      const r = rig(); if (!r || document.hidden) return;
+      const r = caseRig(); if (!r) return;
       const t = r.ctx.currentTime;
       coinUntil = coinUntil.filter((end) => end > t);
-      if (t - lastCoin < .055 || coinUntil.length >= 4) return;
-      lastCoin = t; coinUntil.push(t + .2);
-      const f = 1700 + Math.random() * 1100;
-      const v = (.012 + .026 * Math.min(1, Math.max(0, force))) * (bounce ? .4 : 1);
-      caseTone(f, v, .18);
-      caseTone(f * 1.47, v * .35, .105);
-      caseTone(460, v * .3, .035, 0, 240, "triangle");
+      if (t - lastCoin < .065 || coinUntil.length >= 3) return;
+      lastCoin = t; coinUntil.push(t + .15);
+      const f = 1050 + Math.random() * 450;
+      const v = (.01 + .018 * Math.min(1, Math.max(0, force))) * (bounce ? .38 : 1);
+      caseTone(f, v, .095, 0, f * .78);
+      caseTone(330, v * .7, .045, 0, 170, "triangle");
+      caseNoise(v * .7, .032, 1800, 700);
     }
-    return { load, unlock, play, toggle, rig, caseOpen, caseRoll, caseWin, coinHit, clearCase };
+    return { load, unlock, play, toggle, rig, caseOpen, caseTick, caseWin, coinHit, clearCase };
+  })();
+
+  // One clock drives position, mechanical clicks, haptics and reveal. No delayed background wins.
+  const CASE_ROLL = (() => {
+    const box = $("roll"), track = $("track"), status = $("roll-status");
+    let active = null, raf = 0, position = 3 * CARD_W + 55;
+    const visible = () => !document.hidden && !$("tab-case").classList.contains("hidden");
+    function paint(value) {
+      position = value;
+      track.style.transition = "none";
+      track.style.transform = `translate3d(${box.clientWidth / 2 - value}px,0,0)`;
+    }
+    function phase(text) { if (status.textContent !== text) status.textContent = text; }
+    // Integrated velocity: a short acceleration, then a continuous deceleration to zero.
+    function travel(p) {
+      const a = .08, total = a / 2 + (1 - a) / 3;
+      return p < a ? p * p / (2 * a * total)
+        : (a / 2 + (1 - a) / 3 * (1 - Math.pow((1 - p) / (1 - a), 3))) / total;
+    }
+    function finish(silent = true) {
+      const s = active; if (!s) return;
+      active = null; cancelAnimationFrame(raf); raf = 0;
+      paint(s.target);
+      box.style.setProperty("--roll-speed", "0"); box.style.setProperty("--roll-progress", "1");
+      box.style.setProperty("--win-color", s.win.rarity);
+      box.classList.remove("spinning", "slowing"); box.classList.add("done");
+      box.setAttribute("aria-busy", "false");
+      if (track.children[s.index]) track.children[s.index].classList.remove("focus");
+      track.children[WIN].classList.add("win");
+      phase(s.win.img ? "Скин найден!" : "+3 билета в розыгрыше");
+      FX.clear(); SFX.clearCase();
+      try { s.reveal(silent || !visible()); } finally { s.release(); }
+    }
+    function cancel() {
+      const s = active; active = null;
+      cancelAnimationFrame(raf); raf = 0;
+      FX.clear(); SFX.clearCase();
+      box.classList.remove("spinning", "slowing", "done"); box.setAttribute("aria-busy", "false");
+      box.style.setProperty("--roll-speed", "0"); box.style.setProperty("--roll-progress", "0");
+      phase("Твой следующий дроп");
+      if (track.children[WIN]) track.children[WIN].classList.remove("win");
+      if (s && track.children[s.index]) track.children[s.index].classList.remove("focus");
+      if (s) s.release();
+    }
+    function frame(now) {
+      const s = active; if (!s) return;
+      if (!visible()) { finish(true); return; }
+      const p = Math.min(1, Math.max(0, (now - s.start) / s.duration));
+      if (!s.opened) { s.opened = true; SFX.caseOpen(); }
+      if (p >= 1) { finish(false); return; }
+      const distance = s.target - s.from, moved = travel(p);
+      paint(s.reduced ? s.target : s.from + distance * moved);
+      const speed = p < .08 ? p / .08 : Math.pow((1 - p) / .92, 2);
+      box.style.setProperty("--roll-speed", s.reduced ? "0" : speed.toFixed(3));
+      box.style.setProperty("--roll-progress", p.toFixed(4));
+      box.classList.toggle("slowing", p > .7);
+      phase(s.reduced ? "Открываем…" : p < .12 ? "Разгоняем…" : p < .7 ? "Крутим…" : p < .94 ? "Замедляем…" : "Фиксируем дроп…");
+      const index = Math.floor(position / CARD_W);
+      if (!s.reduced && index !== s.index) {
+        if (track.children[s.index]) track.children[s.index].classList.remove("focus");
+        if (track.children[index]) track.children[index].classList.add("focus");
+        s.index = index;
+        if (now - s.lastTick >= 42) { SFX.caseTick(p); s.lastTick = now; }
+        if (now - s.lastHaptic >= 90) {
+          try { if (inTelegram && tg.HapticFeedback) tg.HapticFeedback.selectionChanged(); } catch (_) { /* optional */ }
+          s.lastHaptic = now;
+        }
+        if (now - s.lastSpark >= 65) {
+          const r = box.getBoundingClientRect();
+          FX.trail(r.left + r.width / 2, r.top + 13, speed);
+          s.lastSpark = now;
+        }
+      }
+      raf = requestAnimationFrame(frame);
+    }
+    window.addEventListener("resize", () => paint(position));
+    return {
+      start(win, reveal, release) {
+        cancel();
+        fillStrip(win);
+        const reduced = Boolean(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
+        const from = 3 * CARD_W + 55, target = WIN * CARD_W + 55 + (Math.random() - .5) * 12;
+        active = { win, reveal, release, from, target, reduced, duration: reduced ? 260 : 5800,
+          start: performance.now() + (reduced ? 0 : 140), index: 3, opened: false,
+          lastTick: -Infinity, lastHaptic: -Infinity, lastSpark: -Infinity };
+        box.classList.remove("done", "slowing"); box.classList.add("spinning");
+        box.setAttribute("aria-busy", "true");
+        box.style.setProperty("--roll-progress", "0"); box.style.setProperty("--roll-speed", "0");
+        phase("Открываем…"); paint(reduced ? target : from);
+        if (!visible()) finish(true); else raf = requestAnimationFrame(frame);
+      },
+      finish, cancel,
+    };
   })();
 
   // text: the bot's own result (HTML) when it answered right here; null when replaying from the chat.
   function replay(code, text = null, done = null, confirmed = false) {
     const win = ITEMS.find((it) => it.code === code);
-    if (!win) return;
+    CASE_ROLL.cancel();
     WIN_SHARE.reset();
+    if (!win) {
+      $("result").classList.remove("hidden", "revealed");
+      $("result").textContent = "Не удалось показать этот дроп. Проверь «Мои призы» в боте.";
+      if (done) done();
+      return;
+    }
     FEED.hold(7500);   // the live strip would show this very drop before the roulette stops
     if (!text) $("spin").classList.add("hidden");
     $("spin-note").textContent = "";
+    $("result").classList.remove("revealed");
     $("result").classList.add("hidden");
-    $("roll").classList.remove("done", "slowing");
-    $("roll").classList.add("spinning");
-    FX.clear(); SFX.clearCase();
-    fillStrip(win);
-    slideTo(3, 0);
-    $("track").offsetWidth;
-    setTimeout(() => {
-      slideTo(WIN, 6.5, 16);
-      tickWhileSliding(6500);
-      SFX.caseRoll(6500);
-      setTimeout(() => $("roll").classList.add("slowing"), 5100);
-    }, 300);
-    setTimeout(() => {
+    let released = false;
+    const release = () => { if (!released) { released = true; if (done) done(); } };
+    CASE_ROLL.start(win, (silent) => {
       const winCard = $("track").children[WIN];
-      winCard.classList.add("win");
-      $("roll").classList.remove("spinning", "slowing");
-      $("roll").classList.add("done");
-      const box = winCard.getBoundingClientRect();
-      FX.win(box.left + box.width / 2, box.top + box.height / 2, win.rarity, TIER[win.code] ?? 0);
-      SFX.caseWin(win.code, Boolean(win.img));
-      if (inTelegram) tg.HapticFeedback.notificationOccurred("success");
+      if (!silent) {
+        const box = winCard.getBoundingClientRect();
+        FX.win(box.left + box.width / 2, box.top + box.height / 2, win.rarity, TIER[win.code] ?? 0);
+        SFX.caseWin(win.code, Boolean(win.img));
+        try { if (inTelegram && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("success"); } catch (_) { /* optional */ }
+      }
       $("result").classList.remove("hidden");
+      $("result").classList.toggle("revealed", !silent);
       $("result").innerHTML = text ? text.replace(/\n/g, "<br>") : win.img
         ? `🎉 Тебе выпал скин <b>${win.price}</b><br>${win.wear}<br><br>Он уже в «🎒 Мои призы» в боте.`
         : `🎟 <b>+3 билета</b> в розыгрыше!<br><br>Следующий бесплатный кейс — завтра.`;
@@ -1540,8 +1660,7 @@
         $("result").appendChild(take);
       }
       WIN_SHARE.setResult(win, confirmed);
-      if (done) done();
-    }, 7000);
+    }, release);
   }
 
   // The page asks the bot directly (through the ngrok tunnel) and the strip stops on the prize here.
@@ -1684,10 +1803,11 @@
   async function spinLive(bonus = false) {
     WIN_SHARE.reset();
     const button = $("spin");
+    if (button.disabled) return;
     button.disabled = true;
     button.textContent = bonus ? "🌀 Открываем суперкейс…" : "🎰 Крутим…";
     SHAKE.lock(true);
-    SFX.unlock().then(() => SFX.caseOpen());
+    SFX.unlock();
     const reset = () => { button.disabled = false; button.textContent = "🎰 Крутить бесплатно"; SHAKE.lock(false); SHAKE.refresh(); };
     let data;
     try {
@@ -1700,10 +1820,11 @@
     } catch (e) {
       data = { error: "Не получилось связаться с ботом. Попробуй ещё раз через минуту." };
     }
+    if (!data || typeof data !== "object") data = { error: "Не удалось прочитать ответ бота. Проверь «Мои призы» перед новым открытием." };
     if (data.error) {
-      $("result").classList.remove("hidden");
+      $("result").classList.remove("hidden", "revealed");
       $("result").textContent = data.error;
-      tg.HapticFeedback.notificationOccurred("error");
+      try { if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("error"); } catch (_) { /* optional */ }
       reset();
       return;
     }
@@ -2558,11 +2679,11 @@
       }
     }
     window.scrollTo(0, 0);
-    if (name === "case") { SFX.load(); FEED.start(); SHAKE.refresh(); } else { FEED.stop(); FX.clear(); SFX.clearCase(); }
+    if (name === "case") { SFX.load(); FEED.start(); SHAKE.refresh(); } else { CASE_ROLL.finish(true); FEED.stop(); FX.clear(); SFX.clearCase(); }
     if (name === "progress") PROGRESS.refresh();
   }
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden) { FX.clear(); SFX.clearCase(); }
+    if (document.hidden) { CASE_ROLL.finish(true); FX.clear(); SFX.clearCase(); }
   });
   document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
   $("game-link").href = "game.html" + location.search;
