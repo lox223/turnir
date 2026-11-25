@@ -204,6 +204,11 @@
   .bonus-meta { display: flex; justify-content: space-between; gap: 4px; margin-top: 4px; color: #b7c3d2; font-size: 10px; }
   .bonus-price { color: #fff1bd; font-weight: 800; }
   .bonus-chance { color: #a9c9ee; }
+  #bonus-open { width: 100%; min-height: 44px; margin-top: 12px; border: 1px solid #ffe27a; border-radius: 9px; background: #f7c531; color: #241c08; font: 750 14px/1.2 -apple-system, "Segoe UI", sans-serif; padding: 12px; cursor: pointer; }
+  #bonus-open:disabled { opacity: .6; cursor: default; }
+  #bonus-open:focus-visible { outline: 2px solid #fff1b0; outline-offset: 3px; }
+  #bonus-status { color: #b9c6d6; font-size: 12px; line-height: 1.4; }
+  #bonus-result { max-width: 230px; margin: 12px auto 0; }
   .bonus-case-preview summary:focus-visible { outline: 2px solid #fff1b0; outline-offset: -3px; }
   @media (prefers-reduced-motion: reduce) { .bonus-case-preview summary::after { transition: none; } }
 
@@ -734,11 +739,16 @@
     <div class="items" id="items"></div>
     <details class="bonus-case-preview" id="bonus-case-preview">
       <summary>
-        <span><span class="bonus-case-title">Бонусный кейс</span><span class="bonus-case-sub">Содержимое открыто для просмотра · открытие только по команде бота</span></span>
+        <span><span class="bonus-case-title">Бонусный кейс</span><span class="bonus-case-sub">Содержимое видно всем · открытие здесь после выдачи ботом</span></span>
       </summary>
       <div class="bonus-case-body">
-        <div class="bonus-case-note">Витрина бонусного кейса. Открытие доступно только после команды бота; шансы указаны для одной прокрутки.</div>
+        <div class="bonus-case-note">Шансы указаны для одной прокрутки. После выдачи открытий ботом здесь появится кнопка; админу доступен безлимитный тест.</div>
         <div class="items bonus-case-items" id="bonus-items"></div>
+        <div id="bonus-controls" class="hidden">
+          <button type="button" id="bonus-open" disabled>Открыть бонусный кейс</button>
+          <p id="bonus-status" role="status" aria-live="polite"></p>
+          <div id="bonus-result" class="hidden" aria-live="polite"></div>
+        </div>
       </div>
     </details>
     <fieldset class="conditions">
@@ -944,12 +954,12 @@
     </div>`;
   $("items").innerHTML = ITEMS.map((it) => card(it)).join("");
   const BONUS_ITEMS = [
-    { name: "Glock-18 | High Beam", img: "bonus-glock.webp", wear: "FT / 0.1820", price: 18.66, chance: 65, rarity: "#4b69ff" },
-    { name: "M4A1-S | Nitro", img: "bonus-m4-nitro.png", wear: "FT / 0.2401", price: 33.08, chance: 12, rarity: "#4b69ff" },
-    { name: "M4A1-S | Hyper Beast", img: "bonus-m4-hyper.webp", wear: "BS / 0.6890", price: 48.34, chance: 8, rarity: "#8847ff" },
-    { name: "USP-S | Pathfinder", img: "bonus-usp-pathfinder.webp", wear: "FT / 0.2231", price: 65.30, chance: 6, rarity: "#8847ff" },
-    { name: "SSG 08 | Acid Fade", img: "bonus-ssg-acid.png", wear: "FN / 0.0068", price: 78.03, chance: 5, rarity: "#d32ce6" },
-    { name: "UMP-45 | Bone Pile", img: "bonus-ump-bone.webp", wear: "FT / 0.2304", price: 100.08, chance: 4, rarity: "#eb4b4b" },
+    { code: "bonus_glock", name: "Glock-18 | High Beam", img: "bonus-glock.webp", wear: "FT / 0.1820", price: 18.66, chance: 65, rarity: "#4b69ff" },
+    { code: "bonus_nitro", name: "M4A1-S | Nitro", img: "bonus-m4-nitro.png", wear: "FT / 0.2401", price: 33.08, chance: 12, rarity: "#4b69ff" },
+    { code: "bonus_hyper", name: "M4A1-S | Hyper Beast", img: "bonus-m4-hyper.webp", wear: "BS / 0.6890", price: 48.34, chance: 8, rarity: "#8847ff" },
+    { code: "bonus_pathfinder", name: "USP-S | Pathfinder", img: "bonus-usp-pathfinder.webp", wear: "FT / 0.2231", price: 65.30, chance: 6, rarity: "#8847ff" },
+    { code: "bonus_acid", name: "SSG 08 | Acid Fade", img: "bonus-ssg-acid.png", wear: "FN / 0.0068", price: 78.03, chance: 5, rarity: "#d32ce6" },
+    { code: "bonus_bone", name: "UMP-45 | Bone Pile", img: "bonus-ump-bone.webp", wear: "FT / 0.2304", price: 100.08, chance: 4, rarity: "#eb4b4b" },
   ];
   const bonusCard = (it) => `
     <div class="bonus-item" style="--rarity:${it.rarity}">
@@ -1945,6 +1955,54 @@
       clearTimeout(timer);
     }
   }
+  const BONUS_CASE = (() => {
+    const controls = $("bonus-controls"), button = $("bonus-open"), status = $("bonus-status"), result = $("bonus-result");
+    let busy = false, requestId = "", access = { admin: false, remaining: 0 };
+    function render() {
+      controls.classList.toggle("hidden", !access.admin && access.remaining <= 0 && !result.hasChildNodes());
+      button.disabled = busy || (!access.admin && access.remaining <= 0);
+      button.textContent = busy ? "Открываем…" : access.admin ? "Открыть · тест админа ∞" : `Открыть · осталось ${access.remaining}`;
+    }
+    async function request(action) {
+      return apiJSON("/api/bonus-case", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" },
+        body: JSON.stringify({ initData: tg.initData, action, ...(action === "spin" ? { request_id: requestId } : {}) }),
+      }, 12000);
+    }
+    async function refresh() {
+      if (!live || busy) return;
+      try {
+        const data = await request("state");
+        if (data.error) return;
+        access = { admin: data.admin === true, remaining: Number(data.remaining) || 0 };
+        render();
+        if (access.admin) status.textContent = "Безлимитный тест: скины не выводятся, билеты и лимиты игроков не меняются.";
+      } catch (_) { /* Keep public contents readable when the bot is offline. */ }
+    }
+    button.addEventListener("click", async () => {
+      if (!live || busy || (!access.admin && access.remaining <= 0)) return;
+      busy = true;
+      if (!requestId) requestId = crypto.randomUUID();
+      render();
+      status.textContent = "Открываем бонусный кейс…";
+      try {
+        const data = await request("spin");
+        if (data.error) { status.textContent = data.error; return; }
+        const item = BONUS_ITEMS.find((it) => it.code === data.code);
+        if (!item) throw new Error("Unknown bonus prize");
+        requestId = "";
+        access = { admin: data.admin === true, remaining: Number(data.remaining) || 0 };
+        result.innerHTML = bonusCard(item);
+        result.classList.remove("hidden");
+        status.textContent = data.test ? "Тест админа: результат сохранён как тестовый, без реального выигрыша. Можно открыть ещё." : "Скин сохранён в «Мои призы» бота. Ежедневное открытие не потрачено.";
+      } catch (_) {
+        status.textContent = "Нет связи с ботом. Нажми ещё раз: повторный запрос не потратит второе открытие.";
+      } finally { busy = false; render(); }
+    });
+    $("bonus-case-preview").addEventListener("toggle", () => { if ($("bonus-case-preview").open) refresh(); });
+    return { refresh };
+  })();
   $("spin-note").textContent = live ? "Жми — и смотри, что выпадет 👆"
     : inTelegram ? "Нажми — бот пришлёт кнопку «💎 Открыть кейс», с ней кейс крутится прямо здесь." : "";
 
