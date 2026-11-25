@@ -184,8 +184,29 @@
   #items .item img, #items .item svg { aspect-ratio: 1.45; }
   #items .item-wear { font-size: 11px; line-height: 1.3; overflow-wrap: anywhere; }
   #items .item-price { margin-top: 3px; font-size: 14px; }
-  #items .item-chance { top: 5px; left: 5px; padding: 1px 5px; font-size: 10px; }
-  /* the top prize gets a slow shine running across it */
+  .bonus-case-preview { margin: 18px 0 14px; border: 1px solid #4a5361; border-radius: 12px; background: #202b38; overflow: hidden; }
+  .bonus-case-preview summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 10px 13px; color: #e7edf5; cursor: pointer; list-style: none; }
+  .bonus-case-preview summary::-webkit-details-marker { display: none; }
+  .bonus-case-preview summary::after { content: "+"; flex: none; color: #c6a653; font-size: 21px; font-weight: 400; line-height: 1; }
+  .bonus-case-preview[open] summary::after { content: "−"; }
+  .bonus-case-title { display: block; font-size: 14px; font-weight: 800; }
+  .bonus-case-sub { display: block; margin-top: 2px; color: #9eacbd; font-size: 11px; font-weight: 500; }
+  .bonus-case-body { padding: 0 13px 13px; border-top: 1px solid #ffffff0d; }
+  .bonus-case-note { margin: 11px 0 10px; color: #b9c6d6; font-size: 12px; line-height: 1.4; }
+  .bonus-case-items { margin-bottom: 0; }
+  .bonus-case-items:empty::before { content: "Предметы бонусного кейса появятся здесь."; display: block; padding: 14px 10px; border: 1px dashed #667486; border-radius: 9px; color: #9eacbd; font-size: 12px; text-align: center; }
+  .bonus-item { position: relative; min-width: 0; padding: 8px; border: 1px solid #495566; border-radius: 9px; background: #182331; overflow: hidden; }
+  .bonus-art { display: grid; place-items: center; aspect-ratio: 1.45; border-radius: 6px; background: radial-gradient(circle at 50% 40%, var(--rarity), #101923 72%); color: #f4f6f8; font-size: 12px; font-weight: 900; letter-spacing: .08em; text-shadow: 0 1px 3px #000; overflow: hidden; }
+  .bonus-art img { display: block; width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 5px 5px #0008); }
+  .bonus-art img[src="bonus-glock.webp"] { width: 82%; height: 82%; }
+  .bonus-name { margin-top: 6px; color: #e9eef5; font-size: 11px; font-weight: 700; line-height: 1.25; }
+  .bonus-wear { margin-top: 2px; color: #8f9db0; font-size: 10px; }
+  .bonus-meta { display: flex; justify-content: space-between; gap: 4px; margin-top: 4px; color: #b7c3d2; font-size: 10px; }
+  .bonus-price { color: #fff1bd; font-weight: 800; }
+  .bonus-chance { color: #a9c9ee; }
+  .bonus-case-preview summary:focus-visible { outline: 2px solid #fff1b0; outline-offset: -3px; }
+  @media (prefers-reduced-motion: reduce) { .bonus-case-preview summary::after { transition: none; } }
+
   .item.top::after { content: ""; position: absolute; top: 0; bottom: 0; left: -60%; width: 40%; pointer-events: none;
                      background: linear-gradient(100deg, transparent, rgba(255, 235, 170, .16), transparent);
                      transform: skewX(-18deg); animation: shine 3.6s ease-in-out infinite; }
@@ -711,6 +732,15 @@
     </div>
     <h2>🎁 Что внутри</h2>
     <div class="items" id="items"></div>
+    <details class="bonus-case-preview" id="bonus-case-preview">
+      <summary>
+        <span><span class="bonus-case-title">Бонусный кейс</span><span class="bonus-case-sub">Содержимое открыто для просмотра · открытие только по команде бота</span></span>
+      </summary>
+      <div class="bonus-case-body">
+        <div class="bonus-case-note">Витрина бонусного кейса. Открытие доступно только после команды бота; шансы указаны для одной прокрутки.</div>
+        <div class="items bonus-case-items" id="bonus-items"></div>
+      </div>
+    </details>
     <fieldset class="conditions">
       <legend>📋 Правила</legend>
       <ol>
@@ -913,7 +943,22 @@
       <div class="item-price">${!it.img ? "+3 билета" : it.price}</div>
     </div>`;
   $("items").innerHTML = ITEMS.map((it) => card(it)).join("");
-  ITEMS.forEach((it) => { if (it.img) new Image().src = it.img + "?v=3"; });
+  const BONUS_ITEMS = [
+    { name: "Glock-18 | High Beam", img: "bonus-glock.webp", wear: "FT / 0.1820", price: 18.66, chance: 65, rarity: "#4b69ff" },
+    { name: "M4A1-S | Nitro", img: "bonus-m4-nitro.png", wear: "FT / 0.2401", price: 33.08, chance: 12, rarity: "#4b69ff" },
+    { name: "M4A1-S | Hyper Beast", img: "bonus-m4-hyper.webp", wear: "BS / 0.6890", price: 48.34, chance: 8, rarity: "#8847ff" },
+    { name: "USP-S | Pathfinder", img: "bonus-usp-pathfinder.webp", wear: "FT / 0.2231", price: 65.30, chance: 6, rarity: "#8847ff" },
+    { name: "SSG 08 | Acid Fade", img: "bonus-ssg-acid.png", wear: "FN / 0.0068", price: 78.03, chance: 5, rarity: "#d32ce6" },
+    { name: "UMP-45 | Bone Pile", img: "bonus-ump-bone.webp", wear: "FT / 0.2304", price: 100.08, chance: 4, rarity: "#eb4b4b" },
+  ];
+  const bonusCard = (it) => `
+    <div class="bonus-item" style="--rarity:${it.rarity}">
+      <div class="bonus-art"><img src="${it.img}" alt="${it.name}" width="156" height="108" decoding="async" draggable="false"></div>
+      <div class="bonus-name">${it.name}</div>
+      <div class="bonus-wear">${it.wear}</div>
+      <div class="bonus-meta"><span class="bonus-price">${it.price.toFixed(2).replace(".", ",")} ₽</span><span class="bonus-chance">${String(it.chance).replace(".", ",")}%</span></div>
+    </div>`;
+  $("bonus-items").innerHTML = BONUS_ITEMS.map(bonusCard).join("");
 
   // Optional win sharing. No photo, referral id or caption leaves the page until the player chooses to send it.
   const WIN_SHARE = (() => {
