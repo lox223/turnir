@@ -745,6 +745,12 @@
         <div class="bonus-case-note">Шансы указаны для одной прокрутки. После выдачи открытий ботом здесь появится кнопка; админу доступен безлимитный тест.</div>
         <div class="items bonus-case-items" id="bonus-items"></div>
         <div id="bonus-controls" class="hidden">
+          <div class="roll hidden" id="bonus-roll" aria-label="Прокрутка бонусного кейса" aria-busy="false">
+            <div class="roll-energy" aria-hidden="true"></div>
+            <div class="roll-marker" aria-hidden="true"></div>
+            <div class="roll-track" id="bonus-track" aria-hidden="true"></div>
+            <div class="roll-caption"><span class="roll-status" id="bonus-roll-status" role="status">Твой следующий дроп</span><span class="roll-meter" aria-hidden="true"></span></div>
+          </div>
           <button type="button" id="bonus-open" disabled>Открыть бонусный кейс</button>
           <p id="bonus-status" role="status" aria-live="polite"></p>
           <div id="bonus-result" class="hidden" aria-live="polite"></div>
@@ -1629,10 +1635,9 @@
   })();
 
   // One clock drives position, mechanical clicks, haptics and reveal. No delayed background wins.
-  const CASE_ROLL = (() => {
-    const box = $("roll"), track = $("track"), status = $("roll-status");
+  function createCaseRoll(box, track, status, fill) {
     let active = null, raf = 0, position = 3 * CARD_W + 55;
-    const visible = () => !document.hidden && !$("tab-case").classList.contains("hidden");
+    const visible = () => !document.hidden && !$("tab-case").classList.contains("hidden") && !box.closest("details:not([open])");
     function paint(value) {
       position = value;
       track.style.transition = "none";
@@ -1705,7 +1710,7 @@
     return {
       start(win, reveal, release) {
         cancel();
-        fillStrip(win);
+        fill(win);
         const reduced = Boolean(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
         const from = 3 * CARD_W + 55, target = WIN * CARD_W + 55 + (Math.random() - .5) * 12;
         active = { win, reveal, release, from, target, reduced, duration: reduced ? 260 : 5800,
@@ -1719,7 +1724,8 @@
       },
       finish, cancel,
     };
-  })();
+  }
+  const CASE_ROLL = createCaseRoll($("roll"), $("track"), $("roll-status"), fillStrip);
 
   // text: the bot's own result (HTML) when it answered right here; null when replaying from the chat.
   function replay(code, text = null, done = null, confirmed = false) {
@@ -1957,11 +1963,18 @@
   }
   const BONUS_CASE = (() => {
     const controls = $("bonus-controls"), button = $("bonus-open"), status = $("bonus-status"), result = $("bonus-result");
+    const rollBox = $("bonus-roll"), track = $("bonus-track");
+    const roll = createCaseRoll(rollBox, track, $("bonus-roll-status"), (win) => {
+      const pick = () => { let chance = Math.random() * 100; return BONUS_ITEMS.find((it) => (chance -= it.chance) < 0) || BONUS_ITEMS[0]; };
+      const cards = Array.from({ length: STRIP }, () => pick());
+      cards[WIN] = win;
+      track.innerHTML = cards.map((it) => card({ ...it, price: it.price.toFixed(2).replace(".", ",") + " ₽" }, false)).join("");
+    });
     let busy = false, requestId = "", access = { admin: false, remaining: 0 };
     function render() {
       controls.classList.toggle("hidden", !access.admin && access.remaining <= 0 && !result.hasChildNodes());
       button.disabled = busy || (!access.admin && access.remaining <= 0);
-      button.textContent = busy ? "Открываем…" : access.admin ? "Открыть · тест админа ∞" : `Открыть · осталось ${access.remaining}`;
+      button.textContent = busy ? "Открываем…" : access.admin ? "Открыть бонусный кейс · ∞" : `Открыть · осталось ${access.remaining}`;
     }
     async function request(action) {
       return apiJSON("/api/bonus-case", {
@@ -1977,12 +1990,18 @@
         if (data.error) return;
         access = { admin: data.admin === true, remaining: Number(data.remaining) || 0 };
         render();
-        if (access.admin) status.textContent = "Безлимитный тест: скины не выводятся, билеты и лимиты игроков не меняются.";
+        if (access.admin && !result.hasChildNodes()) status.textContent = "Безлимитные открытия админа. Выигранные скины поступают на баланс и в «Мои призы».";
       } catch (_) { /* Keep public contents readable when the bot is offline. */ }
     }
     button.addEventListener("click", async () => {
-      if (!live || busy || (!access.admin && access.remaining <= 0)) return;
+      if (!live || busy || spinBusy || (!access.admin && access.remaining <= 0)) return;
       busy = true;
+      spinBusy = true;
+      const normalDisabled = $("spin").disabled;
+      $("spin").disabled = true;
+      SHAKE.lock(true);
+      SFX.unlock();
+      result.classList.add("hidden");
       if (!requestId) requestId = crypto.randomUUID();
       render();
       status.textContent = "Открываем бонусный кейс…";
@@ -1993,12 +2012,17 @@
         if (!item) throw new Error("Unknown bonus prize");
         requestId = "";
         access = { admin: data.admin === true, remaining: Number(data.remaining) || 0 };
-        result.innerHTML = bonusCard(item);
-        result.classList.remove("hidden");
-        status.textContent = data.test ? "Тест админа: результат сохранён как тестовый, без реального выигрыша. Можно открыть ещё." : "Скин сохранён в «Мои призы» бота. Ежедневное открытие не потрачено.";
+        rollBox.classList.remove("hidden");
+        rollBox.scrollIntoView({ block: "center", behavior: "auto" });
+        await new Promise((resolve) => roll.start(item, (silent) => {
+          result.innerHTML = bonusCard(item);
+          result.classList.remove("hidden");
+          status.textContent = "Скин зачислен на баланс и сохранён в «Мои призы» бота. Ежедневное открытие не потрачено.";
+          if (!silent) SFX.caseWin(item.code, true);
+        }, resolve));
       } catch (_) {
         status.textContent = "Нет связи с ботом. Нажми ещё раз: повторный запрос не потратит второе открытие.";
-      } finally { busy = false; render(); }
+      } finally { busy = false; spinBusy = false; $("spin").disabled = normalDisabled; SHAKE.lock(false); render(); }
     });
     $("bonus-case-preview").addEventListener("toggle", () => { if ($("bonus-case-preview").open) refresh(); });
     return { refresh };
