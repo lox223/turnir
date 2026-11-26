@@ -570,7 +570,7 @@ const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const assaultMode = params.get("mode") === "assault";
 const passMode = params.get("mode") === "battlepass";
-const verifiedMode = assaultMode || passMode;
+const verifiedMode = assaultMode || passMode || Boolean(inTelegram && tg.initData);
 let assaultEvent = null, assaultNonce = null;
 const BOT = params.get("bot") || "YooStonkBot";
 
@@ -604,9 +604,10 @@ async function requestApi(action, level, proof = null) {
       method: "POST", signal: ctrl.signal,
       headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" },
       body: JSON.stringify({ initData: tg.initData, action, level,
-        ...(assaultMode ? { event_id: assaultEvent, version: "assault-v1", ...(proof || {}) } : passMode ? (proof || {}) : {}) }),
+        ...(assaultMode ? { event_id: assaultEvent, version: "assault-v1", ...(proof || {}) } : (proof || {})) }),
     });
     const data = await r.json();
+    if (data && data.nonce) assaultNonce = data.nonce;
     if (passMode && data) {
       if (data.nonce) assaultNonce = data.nonce;
       return data.battlepass ? { ...data, ...data.battlepass } : data;
@@ -1094,6 +1095,7 @@ function rewardLine() {
       "Первым трём — по два дополнительных открытия после общей цели. Всем участникам штурма — ещё один билет в этом розыгрыше. Обычная награда за игру сохраняется.";
   }
   if (!signed) return "🎟 За прохождение всех уровней дают <b>+5 билетов</b>, если открыть игру из бота. Сейчас можно играть просто так.";
+  if (server && server.reward) return `🎟 <b>+${Number(server.reward) || 0} билетов</b> начислены! Теперь у тебя <b>${Number(server.tickets) || 0}</b>.`;
   if (!server) return "Не получилось связаться с ботом — пока играй просто так.";
   if (!server.giveaway) return "Сейчас розыгрыша нет — играй ради удовольствия. Начнётся новый — за прохождение всех уровней дадут <b>+5 билетов</b>.";
   if (server.claimed) return "✅ Билеты за этот розыгрыш ты уже получил. Играй просто так!";
@@ -1122,7 +1124,7 @@ function welcome() {
     </ol></details>
     <div class="reward">${rewardLine()}</div>
     <div class="levels">${LEVELS.map((L, i) => `<button type="button" data-i="${i}" ${i < open ? "" : "disabled"}>${i < open ? (i < doneCount() ? "✓ " : "") : "🔒 "}${i + 1}. ${L.name}<small>🐥 ${L.birds} · 😈 ${L.foes.length}</small></button>`).join("")}</div>
-    <button class="go" id="play" ${verifiedMode && (!signed || !server || server.error || server.status !== "active" || doneCount() >= LEVELS.length) ? "disabled" : ""}>▶ Играть</button>
+    <button class="go" id="play" ${verifiedMode && (!signed || !server || server.error || ((assaultMode || passMode) && (server.status !== "active" || doneCount() >= LEVELS.length))) ? "disabled" : ""}>▶ Играть</button>
     ${verifiedMode ? '<button class="ghost" id="refresh-assault">Обновить состояние</button>' : ""}`);
   const buttons = [...document.querySelectorAll(".levels button")];
   const mark = () => buttons.forEach((b, i) => b.classList.toggle("on", i === pick));
@@ -1210,7 +1212,7 @@ async function onAssaultWin() {
       return;
     }
     const last = level === LEVELS.length - 1;
-    show(`<h1>${last ? (passMode ? "Игра пропуска пройдена!" : "Штурм пройден!") : `Уровень ${level + 1} подтверждён`}</h1><div class="reward">${rewardLine()}</div><button class="go" id="continue">${last ? "К уровням" : "Следующий уровень"}</button>`);
+    show(`<h1>${last ? (passMode ? "Игра пропуска пройдена!" : assaultMode ? "Штурм пройден!" : "Все уровни пройдены!") : `Уровень ${level + 1} подтверждён`}</h1><div class="reward">${rewardLine()}</div><button class="go" id="continue">${last ? "К уровням" : "Следующий уровень"}</button>`);
     $("continue").onclick = last ? welcome : () => startLevel(level + 1);
   };
   await submit();
