@@ -569,6 +569,8 @@ const inTelegram = Boolean(tg && tg.platform && tg.platform !== "unknown");
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const assaultMode = params.get("mode") === "assault";
+const passMode = params.get("mode") === "battlepass";
+const verifiedMode = assaultMode || passMode;
 let assaultEvent = null, assaultNonce = null;
 const BOT = params.get("bot") || "YooStonkBot";
 
@@ -598,13 +600,17 @@ async function requestApi(action, level, proof = null) {
   if (!signed) return null;
   const ctrl = new AbortController(), timer = setTimeout(() => ctrl.abort(), 8000);
   try {
-    const r = await fetch(API + (assaultMode ? "/api/assault" : "/api/game"), {
+    const r = await fetch(API + (assaultMode ? "/api/assault" : passMode ? "/api/battle-pass" : "/api/game"), {
       method: "POST", signal: ctrl.signal,
       headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" },
       body: JSON.stringify({ initData: tg.initData, action, level,
-        ...(assaultMode ? { event_id: assaultEvent, version: "assault-v1", ...(proof || {}) } : {}) }),
+        ...(assaultMode ? { event_id: assaultEvent, version: "assault-v1", ...(proof || {}) } : passMode ? (proof || {}) : {}) }),
     });
     const data = await r.json();
+    if (passMode && data) {
+      if (data.nonce) assaultNonce = data.nonce;
+      return data.battlepass ? { ...data, ...data.battlepass } : data;
+    }
     if (assaultMode && data && data.assault) {
       assaultEvent = data.assault.event_id;
       if (data.nonce) assaultNonce = data.nonce;
@@ -1064,12 +1070,17 @@ let level = 0;
 // Levels done in a row. The bot's count rules whenever it answers (a new giveaway starts the run over);
 // the browser's own count is only for playing outside Telegram.
 function doneCount() {
-  if (assaultMode) return server ? Math.max(0, Math.min(LEVELS.length, Number(server.done) || 0)) : 0;
+  if (verifiedMode) return server ? Math.max(0, Math.min(LEVELS.length, Number(server.done) || 0)) : 0;
   return server ? server.done : Math.min(LEVELS.length, parseInt(store.get("cb_done", "0"), 10) || 0);
 }
 function unlocked() { return Math.min(LEVELS.length, doneCount() + 1); }
 
 function rewardLine() {
+  if (passMode) {
+    if (!signed) return "Игра пропуска доступна через бота в Telegram.";
+    if (!server || server.error || server.status !== "active") return "Пропуск недоступен. Вернись на сайт и обнови состояние.";
+    return "Уровни подтверждает сервер. Пройдено: <b>" + doneCount() + " из 9</b>. Задания игры дают до <b>300 XP</b> пропуска.";
+  }
   if (assaultMode) {
     if (!signed) return "Штурм доступен только через бота в Telegram.";
     if (!server) return "Загружаю состояние штурма…";
@@ -1099,7 +1110,7 @@ function welcome() {
   let pick = Math.min(open, LEVELS.length) - 1;
   show(`
     <div class="big">🐥</div>
-    <h1>${assaultMode ? "Общий штурм" : "Цыпа-бум"}</h1>
+    <h1>${assaultMode ? "Общий штурм" : passMode ? "Игра пропуска" : "Цыпа-бум"}</h1>
     <p class="center">Красные вредины засели в башнях.<br>Сбей их всех цыплятами из рогатки!</p>
     <details><summary>Как играть</summary><ol>
       <li><b>Потяни цыплёнка назад</b> и отпусти. Чем сильнее натянешь, тем дальше полетит.</li>
@@ -1111,14 +1122,14 @@ function welcome() {
     </ol></details>
     <div class="reward">${rewardLine()}</div>
     <div class="levels">${LEVELS.map((L, i) => `<button type="button" data-i="${i}" ${i < open ? "" : "disabled"}>${i < open ? (i < doneCount() ? "✓ " : "") : "🔒 "}${i + 1}. ${L.name}<small>🐥 ${L.birds} · 😈 ${L.foes.length}</small></button>`).join("")}</div>
-    <button class="go" id="play" ${assaultMode && (!signed || !server || server.error || server.status !== "active" || doneCount() >= LEVELS.length) ? "disabled" : ""}>▶ Играть</button>
-    ${assaultMode ? '<button class="ghost" id="refresh-assault">Обновить состояние</button>' : ""}`);
+    <button class="go" id="play" ${verifiedMode && (!signed || !server || server.error || server.status !== "active" || doneCount() >= LEVELS.length) ? "disabled" : ""}>▶ Играть</button>
+    ${verifiedMode ? '<button class="ghost" id="refresh-assault">Обновить состояние</button>' : ""}`);
   const buttons = [...document.querySelectorAll(".levels button")];
   const mark = () => buttons.forEach((b, i) => b.classList.toggle("on", i === pick));
   buttons.forEach((b, i) => b.addEventListener("click", () => { pick = i; mark(); }));
   mark();
   $("play").addEventListener("click", () => { AUDIO.start(); startLevel(pick); });
-  if (assaultMode) $("refresh-assault").onclick = async () => {
+  if (verifiedMode) $("refresh-assault").onclick = async () => {
     $("refresh-assault").disabled = true;
     const r = await api("state");
     if (r) server = r;
@@ -1127,7 +1138,7 @@ function welcome() {
 }
 
 async function startLevel(i) {
-  if (assaultMode) {
+  if (verifiedMode) {
     assaultNonce = null;
     show('<h1>Готовлю попытку…</h1><p>Сервер закрепляет уровень за твоим аккаунтом.</p>');
     const r = await api("start", i + 1);
@@ -1144,11 +1155,11 @@ async function startLevel(i) {
   $("lvl").innerHTML = `${i + 1}/${LEVELS.length}<small>${LEVELS[i].name}</small>`;
   updateHUD();
   hide();
-  if (!assaultMode) api("start", i + 1);
+  if (!verifiedMode) api("start", i + 1);
 }
 
 async function onWin() {
-  if (assaultMode) return onAssaultWin();
+  if (verifiedMode) return onAssaultWin();
   AUDIO.play("win");
   if (inTelegram) tg.HapticFeedback.notificationOccurred("success");
   // The run grows only in order: level 3 played on its own (again, after the run) is not "everything passed".
@@ -1188,7 +1199,7 @@ async function onWin() {
 async function onAssaultWin() {
   AUDIO.play("win");
   const proof = { nonce: assaultNonce, shots: game.shots.map(s => ({ ...s })), steps: game.steps };
-  show('<h1>Проверяю прохождение…</h1><p>Место закрепляет сервер после проверки выстрелов.</p>');
+  show('<h1>Проверяю прохождение…</h1><p>Сервер проверяет запись выстрелов.</p>');
   const submit = async () => {
     const r = await api("level", level + 1, proof);
     if (r) server = r;
@@ -1199,7 +1210,7 @@ async function onAssaultWin() {
       return;
     }
     const last = level === LEVELS.length - 1;
-    show(`<h1>${last ? "Штурм пройден!" : `Уровень ${level + 1} подтверждён`}</h1><div class="reward">${rewardLine()}</div><button class="go" id="continue">${last ? "К уровням" : "Следующий уровень"}</button>`);
+    show(`<h1>${last ? (passMode ? "Игра пропуска пройдена!" : "Штурм пройден!") : `Уровень ${level + 1} подтверждён`}</h1><div class="reward">${rewardLine()}</div><button class="go" id="continue">${last ? "К уровням" : "Следующий уровень"}</button>`);
     $("continue").onclick = last ? welcome : () => startLevel(level + 1);
   };
   await submit();

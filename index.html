@@ -2,6 +2,7 @@
 <html lang="ru" class="splash-open">
 <head>
 <meta charset="utf-8">
+<link rel="stylesheet" href="battle-pass.css?v=0214">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Турнир 2x2 · YooSkins</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -562,7 +563,7 @@
   @media (prefers-reduced-motion: reduce) { #splash, #splash-poster { transition: none; } }
 </style>
 </head>
-<body>
+<body class="bp-preview">
 <div id="splash">
   <img id="splash-poster" src="splash-ak47-poster-v7.webp?v=1" alt="" aria-hidden="true" fetchpriority="high">
   <video id="splash-video" playsinline preload="auto" aria-hidden="true">
@@ -681,6 +682,7 @@
   <nav class="tabs">
     <button type="button" data-tab="progress" class="on">🎯 Билеты</button>
     <button type="button" data-tab="case">💎 Кейс</button>
+    <button type="button" data-tab="battlepass" aria-label="Боевой пропуск"><svg class="bp-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true" focusable="false"><path d="M4 5h16v5a2 2 0 0 0 0 4v5H4v-5a2 2 0 0 0 0-4Z"/><path d="M15 8v8" stroke-dasharray="2 2"/></svg><span>Пропуск</span></button>
     <button type="button" data-tab="tourney">🏟 Турнир</button>
     <button type="button" data-tab="reviews">💬</button>
   </nav>
@@ -824,6 +826,58 @@
           <b>@YooAksel</b> — денег за вывод никто никогда не просит.</li>
       </ol>
     </fieldset>
+  </section>
+
+
+  <section id="tab-battlepass" class="hidden" aria-labelledby="bp-title">
+    <div class="bp-local"><b>Сезон 01</b><span>Прогресс подтверждает бот</span></div>
+    <header class="bp-heading"><h1 id="bp-title">Боевой пропуск</h1><span class="bp-free">Бесплатно</span></header>
+    <div class="bp-hero">
+      <p class="bp-season">Сезон 01 · 28 дней</p>
+      <h2>Точка сбора</h2>
+      <p class="bp-hero-copy">10 заданий. Весь путь — за 5 дней.</p>
+      <svg class="bp-hero-art" viewBox="0 0 160 150" aria-hidden="true" focusable="false">
+        <defs><linearGradient id="bp-metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#647286"/><stop offset="1" stop-color="#28374c"/></linearGradient>
+        <linearGradient id="bp-foil" x1="0" x2="1" y2="1"><stop stop-color="#ffebb7"/><stop offset="1" stop-color="#b18546"/></linearGradient></defs>
+        <path d="M24 44 101 21 141 51 64 76Z" fill="url(#bp-metal)" stroke="#8c9aab" stroke-width="1.3"/>
+        <path d="M24 44 64 76 64 126 24 96Z" fill="#273346" stroke="#6a778b"/>
+        <path d="M64 76 141 51 141 101 64 126Z" fill="#35465b" stroke="#7f8da0"/>
+        <path d="M53 36 90 65 90 117 108 111 108 59 70 31Z" fill="url(#bp-foil)"/>
+        <path d="M29 55 57 78M29 83 57 103M72 83 133 64M72 106 133 87" stroke="#f6de9a" stroke-opacity=".18"/>
+        <path d="m100 68 13 5 2 16-14 16-14-7-2-16Z" fill="#202d3e" stroke="#f3d290" stroke-width="1.8"/>
+        <path d="m100 77 3 7 7 1-6 5 1 7-6-4-6 3 2-7-5-5 7-1Z" fill="url(#bp-foil)"/>
+        <path d="M34 111 58 129M125 25l6 8m9-20-2 10M17 29l8 4" stroke="#f3d290" stroke-opacity=".45" stroke-linecap="round"/>
+      </svg>
+      <div class="bp-xp-line"><strong id="bp-xp">0 <small>/ 1 000 XP</small></strong><small id="bp-level-copy">Старт сезона</small></div>
+      <div class="bp-meter" id="bp-meter" role="progressbar" aria-label="Опыт боевого пропуска" aria-valuemin="0" aria-valuemax="1000" aria-valuenow="0"><span id="bp-xp-fill"></span></div>
+      <div class="bp-hero-foot"><span id="bp-next-copy">До первой награды 100 XP</span><b id="bp-days">28 дней</b></div>
+    </div>
+    <div class="bp-section-title"><h2>Твои награды</h2><span id="bp-reward-count">10 этапов</span></div>
+    <div class="bp-route" id="bp-route" role="group" aria-label="10 уровней наград"></div>
+    <article class="bp-reward" id="bp-reward" aria-labelledby="bp-reward-title">
+      <div class="bp-reward-art" id="bp-reward-art" aria-hidden="true">◈</div>
+      <div class="bp-reward-copy"><p class="bp-reward-kicker" id="bp-reward-kicker"></p><h3 id="bp-reward-title"></h3><p class="bp-reward-hint" id="bp-reward-hint"></p></div>
+      <button type="button" id="bp-claim" disabled>Загрузка…</button>
+    </article>
+    <div class="bp-live-actions"><a id="bp-play" class="bp-action-link" href="game.html?mode=battlepass">Играть для пропуска</a><button type="button" id="bp-refresh">Обновить</button></div>
+    <p id="bp-badges" class="bp-badges"></p>
+    <div class="bp-openings"><span id="bp-balance">Открытия пропуска: —</span><button type="button" id="bp-open" disabled>Открыть кейс</button></div>
+    <p class="bp-status" id="bp-status" role="status" aria-live="polite" aria-atomic="true"></p>
+    <div class="bp-section-title"><h2>Задания сезона</h2><span id="bp-task-count">0 из 10</span></div>
+    <div class="bp-filters" role="group" aria-label="Фильтр заданий">
+      <button type="button" data-bp-filter="all" aria-pressed="true">Все</button>
+      <button type="button" data-bp-filter="active" aria-pressed="false">В процессе</button>
+      <button type="button" data-bp-filter="done" aria-pressed="false">Готово</button>
+    </div>
+    <ul class="bp-tasks" id="bp-tasks" aria-label="Задания боевого пропуска"></ul>
+    <p class="bp-empty hidden" id="bp-empty">Здесь пока нет заданий. Выбери другой фильтр.</p>
+    <details class="bp-rules"><summary>Как устроен пропуск</summary><ul>
+      <li>10 заданий, каждое даёт 100 XP один раз за сезон. Всего 1 000 XP и 10 уровней.</li>
+      <li>Повтор одного события не добавляет опыт. Для кейсов, викторин и сундуков считаются разные дни.</li>
+      <li>Пропуск можно полностью пройти за 5 дней: ежедневный кейс и верный ответ каждый день, сундук в 3 дня и 9 уровней «Цыпа-бум» за этот срок. Сезон длится 28 дней.</li>
+      <li>В проекте наград: 18 билетов, 3 скин-кейса пропуска (1 на 5-м уровне и 2 в финале) и 2 значка. Открытия не расходуют ежедневную попытку.</li>
+      <li>Кейсы пропуска отдельные от стримовой бонуски. Внутри — обычный ежедневный набор: скины или +3 билета, с теми же шансами и ограничениями. Для открытия нужен активный розыгрыш и участие в нём.</li>
+    </ul></details>
   </section>
 
   <section id="tab-tourney">
@@ -2167,14 +2221,16 @@
 
   // bonus: the extra spin unlocked by shaking the phone (the bot checks that it really was unlocked)
   let spinBusy = false, assaultRequestId = "";
-  async function spinLive(bonus = false, assault = false) {
+  let passRequestId = "";
+  try { const pending = localStorage.getItem("yooskins:pass:pending-spin"); if (pending && /^[A-Za-z0-9_-]{16,80}$/.test(pending)) passRequestId = pending; } catch (_) { /* Optional retry persistence. */ }
+  async function spinLive(bonus = false, assault = false, battlepass = false) {
     WIN_SHARE.reset();
     const button = $("spin");
     if (spinBusy || button.disabled) return;
     spinBusy = true;
     button.disabled = true;
     ASSAULT.syncSpin(true);
-    button.textContent = assault ? "Открываем призовой кейс…" : bonus ? "Открываем суперкейс…" : "Крутим…";
+    button.textContent = battlepass ? "Открываем кейс пропуска…" : assault ? "Открываем призовой кейс…" : bonus ? "Открываем суперкейс…" : "Крутим…";
     SHAKE.lock(true);
     SFX.unlock();
     const reset = () => {
@@ -2185,6 +2241,7 @@
       SHAKE.lock(false);
       SHAKE.refresh();
       if (assault) ASSAULT.refresh();
+      if (battlepass) document.dispatchEvent(new Event("battlepass-refresh"));
     };
     let data;
     try {
@@ -2194,7 +2251,12 @@
         payload.assault = true;
         payload.request_id = assaultRequestId;
       }
-      const r = await fetch(API.replace(/\/$/, "") + "/api/case/spin", {
+      if (battlepass) {
+        if (!passRequestId) passRequestId = crypto.randomUUID();
+        try { localStorage.setItem("yooskins:pass:pending-spin", passRequestId); } catch (_) { /* Optional storage. */ }
+        payload.action = "spin"; payload.request_id = passRequestId;
+      }
+      const r = await fetch(API.replace(/\/$/, "") + (battlepass ? "/api/battle-pass" : "/api/case/spin"), {
         method: "POST",
         headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" },
         body: JSON.stringify(payload),
@@ -2212,6 +2274,10 @@
       return;
     }
     if (assault && typeof data.code === "string" && data.code) assaultRequestId = "";
+    if (battlepass && typeof data.code === "string" && ITEMS.some(p => p.code === data.code)) {
+      passRequestId = "";
+      try { localStorage.removeItem("yooskins:pass:pending-spin"); } catch (_) { /* Optional storage. */ }
+    }
     replay(data.code, data.text, reset, true);
   }
 
@@ -3051,7 +3117,9 @@
     $("tab-case").classList.toggle("hidden", name !== "case");
     $("tab-tourney").classList.toggle("hidden", name !== "tourney");
     $("tab-reviews").classList.toggle("hidden", name !== "reviews");
-    $("game-link").classList.toggle("hidden", name === "reviews");
+    $("tab-battlepass").classList.toggle("hidden", name !== "battlepass");
+    document.dispatchEvent(new CustomEvent("battlepass-tab", {detail: name}));
+    $("game-link").classList.toggle("hidden", name === "reviews" || name === "battlepass");
     ASSAULT.setTicketsTab(name === "progress");
     $("note").textContent = "";
     // The case and progress tabs have their own controls; Telegram's bottom button is only for the tournament form.
@@ -3121,9 +3189,11 @@
   }
   const roll = location.hash.match(/^#roll=(\w+)/);
   showTab(roll || location.hash === "#case" ? "case" : location.hash === "#tourney" ? "tourney" : location.hash === "#reviews" ? "reviews" : "progress");
+  if (location.hash === "#battlepass") showTab("battlepass");
   if (location.hash === "#invite") shareReferral();
   if (roll) replay(roll[1]);
   LIVE.start();
 </script>
+<script src="battle-pass.js?v=0214"></script>
 </body>
 </html>
