@@ -205,6 +205,11 @@
   #bonus-open { width: 100%; min-height: 44px; margin-top: 12px; border: 1px solid #ffe27a; border-radius: 9px; background: #f7c531; color: #241c08; font: 750 14px/1.2 -apple-system, "Segoe UI", sans-serif; padding: 12px; cursor: pointer; }
   #bonus-open:disabled { opacity: .6; cursor: default; }
   #bonus-open:focus-visible { outline: 2px solid #fff1b0; outline-offset: 3px; }
+  #bonus-entry, #bonus-refresh { width: 100%; min-height: 44px; padding: 11px 12px; margin-top: 8px; border: 1px solid #9c864e; border-radius: 9px; background: #293444; color: #fff1bd; font: 700 14px/1.3 -apple-system, "Segoe UI", sans-serif; cursor: pointer; }
+  #bonus-refresh { color: #c9d5e4; border-color: #526073; background: transparent; }
+  #bonus-refresh:disabled, #bonus-entry:disabled { opacity: .6; cursor: default; }
+  #bonus-entry:focus-visible, #bonus-refresh:focus-visible, #bonus-reopen:focus-visible { outline: 2px solid #fff1b0; outline-offset: 3px; }
+  #bonus-reopen { display: block; padding: 13px 0; min-height: 44px; box-sizing: border-box; color: #a9c9ee; font-size: 12px; text-align: center; }
   #bonus-status { color: #b9c6d6; font-size: 12px; line-height: 1.4; }
   #bonus-result { max-width: 230px; margin: 12px auto 0; }
   .bonus-case-preview summary:focus-visible { outline: 2px solid #fff1b0; outline-offset: -3px; }
@@ -773,6 +778,7 @@
     <div class="result hidden" id="result" role="status" aria-atomic="true"></div>
     <button type="button" class="share-win hidden" id="share-win">Поделиться выигрышем</button>
     <button type="button" id="spin">Крутить бесплатно</button>
+    <button type="button" id="bonus-entry" class="hidden">Открыть бонусный кейс</button>
     <button type="button" id="assault-spin" class="hidden">Призовой кейс · 0</button>
     <div class="note" id="spin-note">Нажми — бот откроет кейс и пришлёт кнопку «🎰 Смотреть прокрутку».</div>
     <!-- Only on phones in Telegram (the script shows it); the bot decides when a shake counts. -->
@@ -790,12 +796,11 @@
     <div class="items" id="items"></div>
     <details class="bonus-case-preview" id="bonus-case-preview">
       <summary>
-        <span><span class="bonus-case-title">Бонусный кейс</span><span class="bonus-case-sub">Содержимое видно всем · открытие здесь после выдачи ботом</span></span>
+        <span><span class="bonus-case-title">Бонусный кейс</span><span class="bonus-case-sub" id="bonus-count">Содержимое и открытия за слова на стриме</span></span>
       </summary>
       <div class="bonus-case-body">
-        <div class="bonus-case-note">Шансы указаны для одной прокрутки. После выдачи открытий ботом здесь появится кнопка; админу доступен безлимитный тест.</div>
-        <div class="items bonus-case-items" id="bonus-items"></div>
-        <div id="bonus-controls" class="hidden">
+        <div class="bonus-case-note">Кейс за угаданное слово доступен сразу. Это отдельное открытие: ежедневный кейс и тряска не расходуются.</div>
+        <div id="bonus-controls">
           <div class="roll hidden" id="bonus-roll" aria-label="Прокрутка бонусного кейса" aria-busy="false">
             <div class="roll-energy" aria-hidden="true"></div>
             <div class="roll-marker" aria-hidden="true"></div>
@@ -803,9 +808,12 @@
             <div class="roll-caption"><span class="roll-status" id="bonus-roll-status" role="status">Твой следующий дроп</span><span class="roll-meter" aria-hidden="true"></span></div>
           </div>
           <button type="button" id="bonus-open" disabled>Открыть бонусный кейс</button>
-          <p id="bonus-status" role="status" aria-live="polite"></p>
+          <p id="bonus-status" role="status" aria-live="polite">Проверим открытия при загрузке кейса.</p>
+          <button type="button" id="bonus-refresh">Обновить открытия</button>
+          <a id="bonus-reopen" href="https://t.me/YooStonkBot?start=bonuscase">Получить свежую кнопку в боте</a>
           <div id="bonus-result" class="hidden" aria-live="polite"></div>
         </div>
+        <div class="items bonus-case-items" id="bonus-items"></div>
       </div>
     </details>
     <fieldset class="conditions">
@@ -2148,6 +2156,7 @@
   }
   const BONUS_CASE = (() => {
     const controls = $("bonus-controls"), button = $("bonus-open"), status = $("bonus-status"), result = $("bonus-result");
+    const details = $("bonus-case-preview"), entry = $("bonus-entry"), refreshButton = $("bonus-refresh"), count = $("bonus-count");
     const rollBox = $("bonus-roll"), track = $("bonus-track");
     const roll = createCaseRoll(rollBox, track, $("bonus-roll-status"), (win) => {
       const pick = () => { let chance = Math.random() * 100; return BONUS_ITEMS.find((it) => (chance -= it.chance) < 0) || BONUS_ITEMS[0]; };
@@ -2155,11 +2164,21 @@
       cards[WIN] = win;
       track.innerHTML = cards.map((it) => card({ ...it, price: it.price.toFixed(2).replace(".", ",") + " ₽" }, false)).join("");
     });
-    let busy = false, requestId = "", access = { admin: false, remaining: 0 };
+    let busy = false, loading = false, loaded = false, stateError = false, requestId = "", access = { admin: false, remaining: 0 };
     function render() {
-      controls.classList.toggle("hidden", !access.admin && access.remaining <= 0 && !result.hasChildNodes());
-      button.disabled = busy || (!access.admin && access.remaining <= 0);
-      button.textContent = busy ? "Открываем…" : access.admin ? "Открыть бонусный кейс · ∞" : `Открыть · осталось ${access.remaining}`;
+      const granted = access.admin || access.remaining > 0 || Boolean(requestId);
+      // A failed balance request must never look like an absent bonus-case feature.
+      controls.classList.remove("hidden");
+      button.disabled = !live || busy || loading || !loaded || stateError || !granted;
+      button.textContent = busy ? "Открываем…" : loading ? "Проверяем открытия…" : requestId ? "Проверить результат открытия" : access.admin ? "Открыть бонусный кейс · ∞"
+        : loaded && !stateError ? access.remaining > 0 ? `Открыть бонусный кейс · ${access.remaining}` : "Нет бонусных открытий" : "Открыть бонусный кейс";
+      refreshButton.disabled = !live || busy || loading;
+      refreshButton.textContent = loading ? "Проверяем…" : "Обновить открытия";
+      entry.classList.toggle("hidden", !loaded || !granted);
+      entry.disabled = busy || loading || stateError;
+      entry.textContent = requestId ? "Проверить результат открытия" : access.admin ? "Бонусный кейс · ∞" : `Бонусный кейс · открытий: ${access.remaining}`;
+      count.textContent = !live ? "Открой из сообщения бота" : stateError ? "Не удалось проверить открытия" : !loaded ? "Проверяем открытия…"
+        : access.admin ? "Безлимитные открытия админа" : `Доступно открытий: ${access.remaining}`;
     }
     async function request(action) {
       return apiJSON("/api/bonus-case", {
@@ -2169,17 +2188,39 @@
       }, 12000);
     }
     async function refresh() {
-      if (!live || busy) return;
+      if (!live) {
+        status.textContent = "Telegram не передал данные аккаунта. Получи свежую кнопку в боте и открой кейс из его сообщения.";
+        render();
+        return;
+      }
+      if (busy || loading) return;
+      loading = true;
+      render();
+      status.textContent = "Проверяем бонусные открытия…";
       try {
         const data = await request("state");
-        if (data.error) return;
-        access = { admin: data.admin === true, remaining: Number(data.remaining) || 0 };
-        render();
-        if (access.admin && !result.hasChildNodes()) status.textContent = "Безлимитные открытия админа. Выигранные скины поступают на баланс и в «Мои призы».";
-      } catch (_) { /* Keep public contents readable when the bot is offline. */ }
+        if (data && data.error) {
+          stateError = true;
+          status.textContent = typeof data.error === "string" ? data.error : "Не удалось проверить открытия. Обнови их или открой кейс заново из бота.";
+          return;
+        }
+        if (!data || typeof data.admin !== "boolean" || !Number.isSafeInteger(data.remaining) || data.remaining < 0) throw new Error("Invalid bonus state");
+        access = { admin: data.admin, remaining: data.remaining };
+        loaded = true;
+        stateError = false;
+        status.textContent = requestId ? "Есть незавершённый запрос. Нажми «Проверить результат открытия»: второе открытие не спишется."
+          : access.admin ? "Безлимитные открытия админа. Выигранные скины поступают на баланс и в «Мои призы»."
+          : access.remaining > 0 ? "Кейс уже начислен. Открой сейчас — окончания раздачи ждать не нужно."
+          : result.hasChildNodes() ? "Скин сохранён в «Мои призы». Бонусных открытий больше нет."
+          : "На этом аккаунте пока нет бонусных открытий. Если только что угадал слово, нажми «Обновить открытия».";
+        if (access.admin || access.remaining > 0) details.open = true;
+      } catch (_) {
+        stateError = true;
+        status.textContent = "Не удалось связаться с ботом и проверить кейс. Начисление не списано. Нажми «Обновить открытия».";
+      } finally { loading = false; render(); }
     }
     button.addEventListener("click", async () => {
-      if (!live || busy || spinBusy || (!access.admin && access.remaining <= 0)) return;
+      if (!live || busy || loading || !loaded || stateError || spinBusy || (!access.admin && access.remaining <= 0 && !requestId)) return;
       busy = true;
       spinBusy = true;
       const normalDisabled = $("spin").disabled;
@@ -2209,8 +2250,19 @@
         status.textContent = "Нет связи с ботом. Нажми ещё раз: повторный запрос не потратит второе открытие.";
       } finally { busy = false; spinBusy = false; $("spin").disabled = normalDisabled; SHAKE.lock(false); render(); }
     });
-    $("bonus-case-preview").addEventListener("toggle", () => { if ($("bonus-case-preview").open) refresh(); });
-    return { refresh, finish: () => roll.finish(true) };
+    function open() {
+      details.open = true;
+      details.scrollIntoView({ block: "start", behavior: "auto" });
+      refresh();
+    }
+    details.addEventListener("toggle", () => { if (details.open) refresh(); });
+    entry.addEventListener("click", open);
+    refreshButton.addEventListener("click", refresh);
+    const visible = () => !document.hidden && !$("tab-case").classList.contains("hidden");
+    document.addEventListener("visibilitychange", () => { if (visible()) refresh(); else roll.finish(true); });
+    setInterval(() => { if (visible()) refresh(); }, 15000);
+    render();
+    return { refresh, open, finish: () => roll.finish(true) };
   })();
   $("spin-note").textContent = live ? "Жми — и смотри, что выпадет 👆"
     : inTelegram ? "Нажми — бот пришлёт кнопку «💎 Открыть кейс», с ней кейс крутится прямо здесь." : "";
@@ -3128,7 +3180,7 @@
       }
     }
     window.scrollTo(0, 0);
-    if (name === "case") { SFX.load(); FEED.start(); SHAKE.refresh(); } else { CASE_ROLL.finish(true); BONUS_CASE.finish(); FEED.stop(); FX.clear(); SFX.clearCase(); }
+    if (name === "case") { SFX.load(); FEED.start(); SHAKE.refresh(); BONUS_CASE.refresh(); } else { CASE_ROLL.finish(true); BONUS_CASE.finish(); FEED.stop(); FX.clear(); SFX.clearCase(); }
     if (name === "progress") { PROGRESS.refresh(); ASSAULT.refresh(); }
   }
   document.addEventListener("visibilitychange", () => {
@@ -3184,7 +3236,8 @@
     $("send").classList.remove("hidden");
   }
   const roll = location.hash.match(/^#roll=(\w+)/);
-  showTab(roll || location.hash === "#case" ? "case" : location.hash === "#tourney" ? "tourney" : location.hash === "#reviews" ? "reviews" : "progress");
+  showTab(roll || location.hash === "#case" || location.hash === "#bonus-case" ? "case" : location.hash === "#tourney" ? "tourney" : location.hash === "#reviews" ? "reviews" : "progress");
+  if (location.hash === "#bonus-case") BONUS_CASE.open();
   if (location.hash === "#battlepass") showTab("battlepass");
   if (location.hash === "#invite") shareReferral();
   if (roll) replay(roll[1]);
