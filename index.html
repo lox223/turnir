@@ -2352,12 +2352,19 @@
         try { localStorage.setItem("yooskins:pass:pending-spin", passRequestId); } catch (_) { /* Optional storage. */ }
         payload.action = "spin"; payload.request_id = passRequestId;
       }
-      const r = await fetch(API.replace(/\/$/, "") + (battlepass ? "/api/battle-pass" : "/api/case/spin"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" },
-        body: JSON.stringify(payload),
-      });
-      data = await r.json();
+      const controller = battlepass ? new AbortController() : null;
+      const timer = controller ? setTimeout(() => controller.abort(), 12000) : 0;
+      try {
+        const r = await fetch(API.replace(/\/$/, "") + (battlepass ? "/api/battle-pass" : "/api/case/spin"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" },
+          body: JSON.stringify(payload),
+          ...(controller ? { signal: controller.signal } : {}),
+        });
+        data = await r.json();
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
     } catch (e) {
       data = { error: "Не получилось связаться с ботом. Попробуй ещё раз через минуту." };
     }
