@@ -2,7 +2,7 @@
 <html lang="ru" class="splash-open">
 <head>
 <meta charset="utf-8">
-<link rel="stylesheet" href="battle-pass.css?v=0214">
+<link rel="stylesheet" href="battle-pass.css?v=0220">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Турнир 2x2 · YooSkins</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -819,7 +819,7 @@
     <fieldset class="conditions">
       <legend>📋 Правила</legend>
       <ol>
-        <li>Крутить можно <b>1 раз в сутки</b>, если ты участвуешь в текущем розыгрыше.</li>
+        <li>Ежедневный кейс можно крутить <b>1 раз в сутки</b>. Если идёт розыгрыш, сначала вступи. Между розыгрышами кейс тоже работает.</li>
         <li>Скины выпадают подписчикам канала, которые в боте <b>от 2 дней</b>. До этого вместо скина — билеты.</li>
         <li>Скин может выпасть <b>при каждой прокрутке</b>, AK-47 — до трёх в неделю на весь бот. Если дневной фонд скинов
           закончился, до завтра падают билеты. Бот всегда пишет, почему.</li>
@@ -834,53 +834,99 @@
 
 
   <section id="tab-battlepass" class="hidden" aria-labelledby="bp-title">
-    <div class="bp-local"><b>Сезон 01</b><span>Прогресс подтверждает бот</span></div>
-    <header class="bp-heading"><h1 id="bp-title">Боевой пропуск</h1><span class="bp-free">Бесплатно</span></header>
-    <div class="bp-hero">
-      <p class="bp-season">Сезон 01 · 28 дней</p>
-      <h2>Точка сбора</h2>
-      <p class="bp-hero-copy">10 заданий. Весь путь — за 5 дней.</p>
-      <svg class="bp-hero-art" viewBox="0 0 160 150" aria-hidden="true" focusable="false">
-        <defs><linearGradient id="bp-metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#647286"/><stop offset="1" stop-color="#28374c"/></linearGradient>
-        <linearGradient id="bp-foil" x1="0" x2="1" y2="1"><stop stop-color="#ffebb7"/><stop offset="1" stop-color="#b18546"/></linearGradient></defs>
-        <path d="M24 44 101 21 141 51 64 76Z" fill="url(#bp-metal)" stroke="#8c9aab" stroke-width="1.3"/>
-        <path d="M24 44 64 76 64 126 24 96Z" fill="#273346" stroke="#6a778b"/>
-        <path d="M64 76 141 51 141 101 64 126Z" fill="#35465b" stroke="#7f8da0"/>
-        <path d="M53 36 90 65 90 117 108 111 108 59 70 31Z" fill="url(#bp-foil)"/>
-        <path d="M29 55 57 78M29 83 57 103M72 83 133 64M72 106 133 87" stroke="#f6de9a" stroke-opacity=".18"/>
-        <path d="m100 68 13 5 2 16-14 16-14-7-2-16Z" fill="#202d3e" stroke="#f3d290" stroke-width="1.8"/>
-        <path d="m100 77 3 7 7 1-6 5 1 7-6-4-6 3 2-7-5-5 7-1Z" fill="url(#bp-foil)"/>
-        <path d="M34 111 58 129M125 25l6 8m9-20-2 10M17 29l8 4" stroke="#f3d290" stroke-opacity=".45" stroke-linecap="round"/>
-      </svg>
-      <div class="bp-xp-line"><strong id="bp-xp">0 <small>/ 1 000 XP</small></strong><small id="bp-level-copy">Старт сезона</small></div>
-      <div class="bp-meter" id="bp-meter" role="progressbar" aria-label="Опыт боевого пропуска" aria-valuemin="0" aria-valuemax="1000" aria-valuenow="0"><span id="bp-xp-fill"></span></div>
-      <div class="bp-hero-foot"><span id="bp-next-copy">До первой награды 100 XP</span><b id="bp-days">28 дней</b></div>
+    <header class="bp-hero">
+      <div class="bp-hero-top">
+        <div class="bp-hero-intro">
+          <p class="bp-season">Сезон 01: Точка сбора</p>
+          <h1 id="bp-title">Боевой пропуск</h1>
+          <p class="bp-hero-copy">Выполняй задания и забирай награды даже между розыгрышами.</p>
+        </div>
+        <svg class="bp-hero-art" viewBox="0 0 220 180" aria-hidden="true" focusable="false">
+          <defs>
+            <radialGradient id="bp-light"><stop stop-color="#ffae25" stop-opacity=".34"/><stop offset="1" stop-color="#ffae25" stop-opacity="0"/></radialGradient>
+            <linearGradient id="bp-lid" x2=".75" y2="1"><stop stop-color="#596879"/><stop offset="1" stop-color="#263747"/></linearGradient>
+            <linearGradient id="bp-face" x2=".7" y2="1"><stop stop-color="#3b4b57"/><stop offset="1" stop-color="#141d27"/></linearGradient>
+            <linearGradient id="bp-seam"><stop stop-color="#dc8e36"/><stop offset=".53" stop-color="#fff0b9"/><stop offset="1" stop-color="#ffae25"/></linearGradient>
+          </defs>
+          <path d="M5 147h30l16-16h137l21-21V75M19 116V69l20-20h26m27-27h54l13 13h36l14 14v12M142 151h57l11-11" fill="none" stroke="#e8bc7c" stroke-opacity=".3"/>
+          <path d="M19 105v12m-6-6h12m179-51h10m-5-5v10M87 22h5" stroke="#ffd047" stroke-opacity=".6"/>
+          <ellipse cx="121" cy="123" rx="97" ry="52" fill="url(#bp-light)"/>
+          <path d="m36 121 66 30 92-34 9 14-101 39-77-36Z" fill="#111922" opacity=".72"/>
+          <path d="m35 76 67 29v53l-67-31Z" fill="#1d2b38" stroke="#5f6c78"/>
+          <path d="m102 105 93-36v55l-93 34Z" fill="url(#bp-face)" stroke="#75818a"/>
+          <path d="m43 93 50 23v27l-50-23Zm67 25 76-30v27l-76 29Z" fill="none" stroke="#a3aeb7" stroke-opacity=".24"/>
+          <path d="m34 69 91-34 71 27-94 37Z" fill="url(#bp-lid)" stroke="#8d98a2"/>
+          <path d="m47 69 78-29 57 22-80 31Zm18-7 55 23m16-6L81 56m18-7 55 23" fill="none" stroke="#b6bdc2" stroke-opacity=".35"/>
+          <path d="m34 69 68 30 94-37v11l-94 36-68-30Z" fill="#263442" stroke="#6c7680"/>
+          <path d="m35 79 67 30 93-36" fill="none" stroke="#ffae25" stroke-width="8" opacity=".24"/>
+          <path d="m35 79 67 30 93-36" fill="none" stroke="url(#bp-seam)" stroke-width="2.4"/>
+          <path d="m119 107 36-14v32l-36 14Z" fill="#18232d" stroke="#ffd047" stroke-opacity=".72"/>
+          <path d="m125 126 11-17 7-3-11 17Zm12-5 10-16 5-2-10 16Z" fill="#ffd047"/>
+          <path d="m32 96 8 4v26l-8-4Zm66 32 8-3v32l-4 2-4-2Zm90-31 9-4v30l-9 4Z" fill="#44515e" stroke="#73808b" stroke-width=".75"/>
+          <path d="m171 111 9-4m-9 8 9-4M53 111l14 7m-14-2 9 4" stroke="#f1d498" stroke-opacity=".55"/>
+        </svg>
+      </div>
+      <div id="bp-progress" class="bp-hero-progress" hidden>
+        <div class="bp-xp-line"><strong id="bp-xp"></strong><small id="bp-level-copy"></small></div>
+        <div class="bp-meter" id="bp-meter" role="progressbar" aria-label="Опыт боевого пропуска" aria-valuemin="0" aria-valuemax="1000"><span id="bp-xp-fill"></span></div>
+        <div class="bp-hero-foot"><span id="bp-next-copy"></span><b id="bp-days"></b></div>
+      </div>
+    </header>
+    <div class="bp-tools">
+      <p id="bp-load-status" class="bp-load-status" role="status" aria-atomic="true">Загружаем прогресс…</p>
+      <a id="bp-launch" class="bp-control bp-primary" href="https://t.me/YooStonkBot?start=battlepass" hidden>Открыть в Telegram</a>
+      <button id="bp-jump" class="bp-control bp-primary" type="button" aria-controls="bp-missions" hidden>К заданиям</button>
+      <button id="bp-refresh" class="bp-control bp-refresh" type="button" aria-disabled="true">Обновить</button>
     </div>
-    <div class="bp-section-title"><h2>Твои награды</h2><span id="bp-reward-count">10 этапов</span></div>
-    <div class="bp-route" id="bp-route" role="group" aria-label="10 уровней наград"></div>
-    <article class="bp-reward" id="bp-reward" aria-labelledby="bp-reward-title">
-      <div class="bp-reward-art" id="bp-reward-art" aria-hidden="true">◈</div>
-      <div class="bp-reward-copy"><p class="bp-reward-kicker" id="bp-reward-kicker"></p><h3 id="bp-reward-title"></h3><p class="bp-reward-hint" id="bp-reward-hint"></p></div>
-      <button type="button" id="bp-claim" disabled>Загрузка…</button>
-    </article>
-    <div class="bp-live-actions"><a id="bp-play" class="bp-action-link" href="game.html?mode=battlepass">Играть для пропуска</a><button type="button" id="bp-refresh">Обновить</button></div>
-    <p id="bp-badges" class="bp-badges"></p>
-    <div class="bp-openings"><span id="bp-balance">Открытия пропуска: —</span><button type="button" id="bp-open" disabled>Открыть кейс</button></div>
-    <p class="bp-status" id="bp-status" role="status" aria-live="polite" aria-atomic="true"></p>
-    <div class="bp-section-title"><h2>Задания сезона</h2><span id="bp-task-count">0 из 10</span></div>
-    <div class="bp-filters" role="group" aria-label="Фильтр заданий">
-      <button type="button" data-bp-filter="all" aria-pressed="true">Все</button>
-      <button type="button" data-bp-filter="active" aria-pressed="false">В процессе</button>
-      <button type="button" data-bp-filter="done" aria-pressed="false">Готово</button>
+    <div id="bp-content" hidden>
+      <div id="bp-rewards" class="bp-stages">
+        <div class="bp-section-title"><h2>Уровни и награды</h2><span id="bp-reward-count"></span></div>
+        <div class="bp-route" id="bp-route" role="group" aria-label="10 уровней наград"></div>
+        <article class="bp-reward" id="bp-reward" aria-labelledby="bp-reward-title">
+          <div class="bp-reward-art" id="bp-reward-art" aria-hidden="true"></div>
+          <div class="bp-reward-copy"><p class="bp-reward-kicker" id="bp-reward-kicker"></p><h3 id="bp-reward-title"></h3><p class="bp-reward-hint" id="bp-reward-hint"></p></div>
+          <button class="bp-control bp-primary" type="button" id="bp-claim" disabled>Забрать награду</button>
+        </article>
+        <p class="bp-status" id="bp-status" role="status" aria-atomic="true"></p>
+      </div>
+      <div class="bp-inventory">
+        <div class="bp-openings">
+          <svg class="bp-inventory-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" focusable="false"><path d="m3 7 9-4 9 4v10l-9 4-9-4Zm0 0 9 4 9-4M12 11v10M7.5 5l9 4v5"/></svg>
+          <div><h2>Кейсы пропуска</h2><p id="bp-balance"></p></div>
+          <button type="button" class="bp-control" id="bp-open" disabled>Открыть кейс</button>
+          <p class="bp-open-note" id="bp-open-note" role="status" aria-atomic="true"></p>
+        </div>
+        <div class="bp-ticket-bank" id="bp-ticket-bank" hidden>
+          <svg class="bp-inventory-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" focusable="false"><path d="M4 5h16v5a2 2 0 0 0 0 4v5H4v-5a2 2 0 0 0 0-4ZM15 8v8"/></svg>
+          <div><h2>Отложенные билеты пропуска</h2><p id="bp-ticket-note"></p></div>
+          <strong id="bp-pending-tickets"></strong>
+        </div>
+        <p id="bp-badges" class="bp-badges"></p>
+      </div>
+      <div id="bp-missions">
+        <div class="bp-section-title"><h2>Задания сезона</h2><span id="bp-task-count"></span></div>
+        <div class="bp-live-actions" id="bp-live-actions" role="group" aria-label="Перейти к заданиям">
+          <button type="button" id="bp-daily" class="bp-control">Ежедневный кейс</button>
+          <a id="bp-play" class="bp-control bp-action-link" href="game.html?mode=battlepass">Цыпа-бум</a>
+          <a id="bp-quiz" class="bp-control bp-action-link" href="https://t.me/YooStonkBot?start=bpquiz">Викторина</a>
+          <a id="bp-bot-tasks" class="bp-control bp-action-link" href="https://t.me/YooStonkBot?start=bptasks">Сундук в боте</a>
+        </div>
+        <div class="bp-filters" role="group" aria-label="Фильтр заданий">
+          <button type="button" data-bp-filter="all" aria-pressed="true">Все</button>
+          <button type="button" data-bp-filter="active" aria-pressed="false">В процессе</button>
+          <button type="button" data-bp-filter="done" aria-pressed="false">Готово</button>
+        </div>
+        <ul class="bp-tasks" id="bp-tasks" aria-label="Задания боевого пропуска"></ul>
+        <p class="bp-empty" id="bp-empty" role="status" aria-atomic="true"></p>
+      </div>
     </div>
-    <ul class="bp-tasks" id="bp-tasks" aria-label="Задания боевого пропуска"></ul>
-    <p class="bp-empty hidden" id="bp-empty">Здесь пока нет заданий. Выбери другой фильтр.</p>
     <details class="bp-rules"><summary>Как устроен пропуск</summary><ul>
-      <li>10 заданий, каждое даёт 100 XP один раз за сезон. Всего 1 000 XP и 10 уровней.</li>
-      <li>Повтор одного события не добавляет опыт. Для кейсов, викторин и сундуков считаются разные дни.</li>
-      <li>Пропуск можно полностью пройти за 5 дней: ежедневный кейс и верный ответ каждый день, сундук в 3 дня и 9 уровней «Цыпа-бум» за этот срок. Сезон длится 28 дней.</li>
-      <li>В проекте наград: 18 билетов, 3 скин-кейса пропуска (1 на 5-м уровне и 2 в финале) и 2 значка. Открытия не расходуют ежедневную попытку.</li>
-      <li>Кейсы пропуска отдельные от стримовой бонуски. Внутри — обычный ежедневный набор: скины или +3 билета, с теми же шансами и ограничениями. Для открытия нужен активный розыгрыш и участие в нём.</li>
+      <li>Пропуск бесплатный. Каждое из 10 заданий даёт 100 XP один раз за сезон.</li>
+      <li>Для кейсов, викторин и сундуков считаются разные дни. Повтор не добавляет опыт.</li>
+      <li>Пропуск можно пройти за 5 дней: ежедневный кейс и верный ответ каждый день, сундук в 3 разных дня и 9 уровней «Цыпа-бум». Сезон длится 28 дней.</li>
+      <li>За уровни можно получить 18 билетов, 2 значка и 3 кейса пропуска: 1 на 5-м уровне и 2 на 10-м.</li>
+      <li>Кейсы пропуска открываются и без розыгрыша. Внутри скины или билеты. Открытие не тратит ежедневную попытку.</li>
+      <li>Если ты не участвуешь в розыгрыше, билеты из наград и кейсов пропуска сохраняются. Они зачислятся автоматически, когда ты вступишь в открытый розыгрыш.</li>
     </ul></details>
   </section>
 
@@ -1126,15 +1172,17 @@
       trigger.classList.add("hidden");
       close(); revoke();
     }
-    function setResult(win, confirmed = false) {
+    function setResult(win, confirmed = false, battlepass = false) {
       reset();
       const user = inTelegram && tg.initDataUnsafe && tg.initDataUnsafe.user;
       const uid = user && String(user.id);
       // A #roll= replay is an unverified illustration, not proof that this user won a skin.
       const personal = Boolean(confirmed && uid && /^[1-9]\d{0,15}$/.test(uid) && /^[A-Za-z0-9_]{5,32}$/.test(BOT));
       const link = personal ? `https://t.me/${BOT}?start=r${uid}` : "";
-      const name = win.name || (win.img ? "Скин CS2" : "+3 билета в розыгрыше");
-      const text = win.img ? `Мне выпал ${name} за ${localPrice(win)} в YooSkins. Здесь открываю кейсы за приглашения.`
+      const passTickets = battlepass && !win.img;
+      const name = passTickets ? "+3 билета пропуска" : win.name || (win.img ? "Скин CS2" : "+3 билета в розыгрыше");
+      const text = passTickets ? "Мне выпало +3 билета в кейсе пропуска YooSkins."
+        : win.img ? `Мне выпал ${name} за ${localPrice(win)} в YooSkins. Здесь открываю кейсы за приглашения.`
         : "Мне выпало +3 билета в розыгрыше YooSkins. Здесь открываю кейсы за приглашения.";
       current = { win, name, link, kind: "win", sample: !personal, text: personal ? `${text}\n\n${link}` : `Образец карточки — не подтверждение выигрыша.\n\n${text}` };
       lastWin = current;
@@ -1921,7 +1969,7 @@
   const CASE_ROLL = createCaseRoll($("roll"), $("track"), $("roll-status"), fillStrip);
 
   // text: the bot's own result (HTML) when it answered right here; null when replaying from the chat.
-  function replay(code, text = null, done = null, confirmed = false) {
+  function replay(code, text = null, done = null, confirmed = false, battlepass = false) {
     const win = ITEMS.find((it) => it.code === code);
     CASE_ROLL.cancel();
     ASSAULT.syncSpin(true);
@@ -1966,7 +2014,7 @@
         $("result").appendChild(document.createElement("br"));
         $("result").appendChild(take);
       }
-      WIN_SHARE.setResult(win, confirmed);
+      WIN_SHARE.setResult(win, confirmed, battlepass);
     }, release);
   }
 
@@ -2326,7 +2374,7 @@
       passRequestId = "";
       try { localStorage.removeItem("yooskins:pass:pending-spin"); } catch (_) { /* Optional storage. */ }
     }
-    replay(data.code, data.text, reset, true);
+    replay(data.code, data.text, reset, true, battlepass);
   }
 
   function spin() {
@@ -3243,6 +3291,6 @@
   if (roll) replay(roll[1]);
   LIVE.start();
 </script>
-<script src="battle-pass.js?v=0214"></script>
+<script src="battle-pass.js?v=0220"></script>
 </body>
 </html>
